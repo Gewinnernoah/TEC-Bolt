@@ -40,7 +40,9 @@ export function useSetting<T>(key: string, fallback: T): [T, (v: T) => void] {
   }, [key]);
 
   const setter = (v: T) => {
-    void updateSetting(key, v);
+    updateSetting(key, v).then(({ error }) => {
+      if (error) console.error(`Failed to update setting "${key}":`, error);
+    });
   };
 
   return [val, setter];

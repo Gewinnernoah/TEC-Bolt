@@ -123,10 +123,6 @@ export function wifiQualityColor(quality: 'good' | 'ok' | 'poor' | 'critical'): 
   }
 }
 
-export function generateInventoryNumber(categoryPrefix: string, count: number): string {
-  return `${categoryPrefix}-${String(count + 1).padStart(5, '0')}`;
-}
-
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }

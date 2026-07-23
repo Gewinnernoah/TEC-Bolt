@@ -245,6 +245,8 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   const [dragOver, setDragOver] = useState(false);
   const [supportedFormats] = useSetting<string[]>('supported_print_formats', ['stl', 'obj', '3mf', 'gcode']);
   const [maxSize] = useSetting<number>('max_print_file_size_mb', 50);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -256,6 +258,7 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     const valid = supportedFormats.includes(ext);
     const sizeMB = file.size / (1024 * 1024);
+    setSelectedFile(file);
     setFileName(file.name);
     setFileSize(file.size);
     setFileFormat(ext);
@@ -271,20 +274,36 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   };
 
   const submit = async () => {
-    if (!fileName || !fileValid) { toast('Please upload a valid file', 'error'); return; }
+    if (!fileName || !fileValid || !selectedFile) { toast('Please upload a valid file', 'error'); return; }
     if (!filamentId) { toast('Select a filament color/material', 'error'); return; }
 
+    setUploading(true);
     const filament = catalog.find((c) => c.id === filamentId);
     const { data: profileData } = await supabase.auth.getUser();
+    const userId = profileData.user?.id;
+    if (!userId) { toast('Authentication error', 'error'); setUploading(false); return; }
+
+    const filePath = `${userId}/${Date.now()}-${fileName}`;
+    const { error: uploadError } = await supabase.storage.from('print-files').upload(filePath, selectedFile);
+    if (uploadError) {
+      toast(uploadError.message, 'error');
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from('print-files').getPublicUrl(filePath);
+    const fileUrl = urlData.publicUrl;
+
     const { error } = await supabase.from('print_requests').insert({
-      teacher_id: profileData.user?.id, file_name: fileName, file_size_bytes: fileSize,
+      teacher_id: userId, file_name: fileName, file_url: fileUrl, file_size_bytes: fileSize,
       file_format: fileFormat, file_valid: true, validation_notes: 'Validated on upload',
       filament_catalog_id: filamentId, filament_material: filament?.material, filament_color: filament?.color,
       copies, notes, status: 'queued',
     });
-    if (error) { toast(error.message, 'error'); return; }
+    if (error) { toast(error.message, 'error'); setUploading(false); return; }
     await logActivity('print.upload', 'print', undefined, { fileName });
     toast('Print request submitted to queue', 'success');
+    setUploading(false);
     onSaved();
   };
 

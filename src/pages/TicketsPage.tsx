@@ -158,7 +158,7 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
     try {
       // Real client-side speed test using fetch timing
       const start = performance.now();
-      await fetch(`https:// supabase.co/`, { cache: 'no-store' }).catch(() => null);
+      await fetch(`https://speed.cloudflare.com/__down?bytes=0`, { cache: 'no-store' }).catch(() => null);
       const latency = performance.now() - start;
 
       // Measure download speed by fetching a known-size resource

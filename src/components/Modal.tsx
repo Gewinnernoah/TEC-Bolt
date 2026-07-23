@@ -1,13 +1,7 @@
-import { createContext, useState, useCallback, type ReactNode } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface ModalContextValue {
-  close: () => void;
-}
-
-const ModalContext = createContext<ModalContextValue | undefined>(undefined);
 
 interface ModalProps {
   open: boolean;
@@ -80,5 +74,3 @@ export function useModal() {
   const closeModal = useCallback(() => setOpen(false), []);
   return { open, openModal, closeModal };
 }
-
-export { ModalContext };

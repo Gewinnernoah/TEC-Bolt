@@ -47,9 +47,37 @@ export function CalendarPage() {
     });
   };
 
-  const prev = () => setCurrentDate(new Date(year, month - 1, 1));
-  const next = () => setCurrentDate(new Date(year, month + 1, 1));
+  const weekStart = useMemo(() => {
+    const d = new Date(currentDate);
+    const day = d.getDay();
+    d.setDate(d.getDate() - day);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [currentDate]);
+
+  const weekDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  }, [weekStart]);
+
+  const prev = () => {
+    if (view === 'week') setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 7));
+    else setCurrentDate(new Date(year, month - 1, 1));
+  };
+  const next = () => {
+    if (view === 'week') setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 7));
+    else setCurrentDate(new Date(year, month + 1, 1));
+  };
   const today = () => setCurrentDate(new Date());
+
+  const headerLabel = view === 'week'
+    ? `${weekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+    : currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  const days = view === 'week' ? weekDays : monthDays;
 
   const selectedEvents = selectedDate ? eventsForDay(new Date(selectedDate)) : [];
 
@@ -68,7 +96,7 @@ export function CalendarPage() {
       <div className="card p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-slate-100">
-            {currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+            {headerLabel}
           </h3>
           <div className="flex gap-2">
             <button onClick={prev} className="btn-icon"><ChevronLeft className="h-5 w-5" /></button>
@@ -80,8 +108,8 @@ export function CalendarPage() {
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
             <div key={d} className="text-center text-xs font-medium text-slate-500 py-2">{d}</div>
           ))}
-          {monthDays.map((date, i) => {
-            if (!date) return <div key={i} />;
+          {days.map((date, i) => {
+            if (!date) return <div key={i} className={view === 'week' ? '' : ''} />;
             const events = eventsForDay(date);
             const isToday = date.toDateString() === new Date().toDateString();
             const isSelected = selectedDate === date.toISOString();
