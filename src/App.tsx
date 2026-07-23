@@ -20,7 +20,7 @@ import { AdminLogsPage } from '@/pages/AdminLogsPage';
 import { TecRoomPage } from '@/pages/TecRoomPage';
 
 function AppContent() {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, locked } = useAuth();
   const [page, setPage] = useState('dashboard');
 
   useEffect(() => {
@@ -36,6 +36,10 @@ function AppContent() {
         </div>
       </div>
     );
+  }
+
+  if (locked && session) {
+    return <LoginPage locked />;
   }
 
   if (!session || !profile) {

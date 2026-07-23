@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Menu, X, LogOut, Bell, Fingerprint, ChevronDown, Shield, Monitor,
+  Menu, X, LogOut, Bell, Fingerprint, ChevronDown, Shield, Monitor, Lock,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { NAV_ITEMS, GROUP_LABELS, type NavItem } from '@/lib/nav';
@@ -16,7 +16,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ current, onNavigate, children }: AppShellProps) {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, lock } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -148,8 +148,11 @@ export function AppShell({ current, onNavigate, children }: AppShellProps) {
                         <Fingerprint className="h-4 w-4" /> Fingerprint enrolled
                       </div>
                     )}
-                    <button onClick={() => { signOut(); }} className="sidebar-link w-full mt-1 text-red-400 hover:bg-red-950/30">
-                      <LogOut className="h-4 w-4" /> Sign out
+                    <button onClick={() => { lock(); }} className="sidebar-link w-full text-amber-400 hover:bg-amber-950/30">
+                      <Lock className="h-4 w-4" /> Sitzung sperren
+                    </button>
+                    <button onClick={() => { signOut(); }} className="sidebar-link w-full text-red-400 hover:bg-red-950/30">
+                      <LogOut className="h-4 w-4" /> Abmelden
                     </button>
                   </div>
                 </div>,

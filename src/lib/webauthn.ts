@@ -91,6 +91,7 @@ export async function enrollFingerprint(profile: Profile): Promise<{ error: stri
       .eq('id', profile.id);
 
     if (error) return { error: error.message };
+    setStoredFingerprintEmail(profile.email);
     return { error: null };
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Enrollment failed.' };
@@ -134,28 +135,29 @@ export async function removeFingerprint(profile: Profile): Promise<{ error: stri
     })
     .eq('id', profile.id);
   if (error) return { error: error.message };
+  clearStoredFingerprintEmail();
   return { error: null };
 }
 
-export function getStoredFingerprintProfileId(): string | null {
+export function getStoredFingerprintEmail(): string | null {
   try {
-    return localStorage.getItem('fingerprint_profile_id');
+    return localStorage.getItem('fingerprint_email');
   } catch {
     return null;
   }
 }
 
-export function setStoredFingerprintProfileId(id: string): void {
+export function setStoredFingerprintEmail(email: string): void {
   try {
-    localStorage.setItem('fingerprint_profile_id', id);
+    localStorage.setItem('fingerprint_email', email);
   } catch {
     // ignore
   }
 }
 
-export function clearStoredFingerprintProfileId(): void {
+export function clearStoredFingerprintEmail(): void {
   try {
-    localStorage.removeItem('fingerprint_profile_id');
+    localStorage.removeItem('fingerprint_email');
   } catch {
     // ignore
   }
