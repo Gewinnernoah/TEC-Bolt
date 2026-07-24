@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Settings, ToggleLeft, ToggleRight, Clock, Wifi, Shield, Printer, Boxes, Cpu, Sliders } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { useSetting, loadSettings } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 import { PageHeader, LoadingScreen } from '@/components/ui';

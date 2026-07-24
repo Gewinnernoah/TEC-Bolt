@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { BookOpen, Search, Plus, Edit, Trash2, Video, Tag, FileText } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import { PageHeader, LoadingScreen, EmptyState } from '@/components/ui';
 import { Modal, ConfirmDialog, useModal } from '@/components/Modal';

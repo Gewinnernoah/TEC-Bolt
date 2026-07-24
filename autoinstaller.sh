@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 #
-# Autoinstaller - Node.js + Projekt-Abhaengigkeiten
+# Autoinstaller - Node.js + Projekt-Abhaengigkeiten + Datenbank-Setup
 # Prueft ob Node.js installiert ist, installiert es falls noetig,
-# richtet alle Projekt-Abhaengigkeiten ein und verifiziert den Build.
+# richtet alle Projekt-Abhaengigkeiten ein, laesst den Benutzer die
+# Datenbank auswaehlen (Supabase Cloud oder lokale PGlite) und
+# verifiziert den Build.
 #
 # Verwendung:  ./autoinstaller.sh
 #
@@ -25,6 +27,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 BOLD='\033[1m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 # ---------------------------------------------------------------------------
@@ -56,7 +59,6 @@ detect_platform() {
 }
 
 version_ge() {
-  # Gibt 0 (true) zurueck wenn $1 >= $2 (Format: major minor)
   local major1 minor1 major2 minor2
   major1="${1%%.*}"; minor1="${1#*.}"
   major2="${2%%.*}"; minor2="${2#*.}"
@@ -78,7 +80,7 @@ check_node() {
   if version_ge "${major}.${minor}" "${NODE_MIN_MAJOR}.${NODE_MIN_MINOR}"; then
     return 0
   fi
-  log_warn "Node.js Version ${version} gefunden, bentigt >= ${NODE_MIN_MAJOR}.${NODE_MIN_MINOR}"
+  log_warn "Node.js Version ${version} gefunden, benoetigt >= ${NODE_MIN_MAJOR}.${NODE_MIN_MINOR}"
   return 1
 }
 
@@ -95,8 +97,92 @@ check_npm() {
   if version_ge "${major}.${minor}" "${NPM_MIN_MAJOR}.${NPM_MIN_MINOR}"; then
     return 0
   fi
-  log_warn "npm Version ${version} gefunden, bentigt >= ${NPM_MIN_MAJOR}.${NPM_MIN_MINOR}"
+  log_warn "npm Version ${version} gefunden, benoetigt >= ${NPM_MIN_MAJOR}.${NPM_MIN_MINOR}"
   return 1
+}
+
+# ---------------------------------------------------------------------------
+# Datenbank-Auswahl
+# ---------------------------------------------------------------------------
+select_database() {
+  echo ""
+  echo -e "${BOLD}Welche Datenbank moechtest du verwenden?${NC}"
+  echo ""
+  echo -e "  ${CYAN}1) Supabase (Cloud)${NC}"
+  echo -e "     -> Hosted PostgreSQL mit Auth, Realtime, RLS"
+  echo -e "     -> Benoetigt Supabase-Credentials in .env"
+  echo -e "     -> Internetverbindung noetig"
+  echo ""
+  echo -e "  ${CYAN}2) PGlite (Lokal)${NC}"
+  echo -e "     -> PostgreSQL direkt im Browser (WASM, IndexedDB)"
+  echo -e "     -> Keine Internetverbindung noetig"
+  echo -e "     -> Daten bleiben im Browser gespeichert"
+  echo -e "     -> Keine Supabase-Credentials noetig"
+  echo ""
+  echo -e "  ${CYAN}3) Beide einrichten (Supabase als Standard)${NC}"
+  echo -e "     -> .env mit Supabase + PGlite als Fallback"
+  echo ""
+  read -rp "Auswahl [1-3] (Standard: 1): " choice
+  choice="${choice:-1}"
+
+  case "$choice" in
+    1) DB_MODE="supabase" ;;
+    2) DB_MODE="pglite" ;;
+    3) DB_MODE="supabase" ;;
+    *) log_warn "Ungueltige Auswahl, verwende Supabase"; DB_MODE="supabase" ;;
+  esac
+
+  echo ""
+  log_ok "Datenbank-Modus: ${DB_MODE}"
+}
+
+# ---------------------------------------------------------------------------
+# .env-Datei erstellen
+# ---------------------------------------------------------------------------
+setup_env() {
+  cd "$PROJECT_DIR"
+
+  if [[ "$DB_MODE" == "pglite" ]]; then
+    # PGlite: nur VITE_DB_MODE noetig
+    if [[ -f ".env" ]] && grep -q "VITE_DB_MODE" .env 2>/dev/null; then
+      log_ok ".env bereits mit DB_MODE konfiguriert"
+    else
+      log_info "Erstelle .env fuer PGlite (lokale Datenbank)..."
+      echo "# Database mode: pglite for local browser-based PostgreSQL" > .env
+      echo "VITE_DB_MODE=pglite" >> .env
+      log_ok ".env erstellt (PGlite-Modus)"
+    fi
+  else
+    # Supabase: Credentials aus Beispiel-Datei oder bestehend
+    if [[ -f ".env" ]] && grep -q "VITE_SUPABASE_URL" .env 2>/dev/null && ! grep -q "DEINE" .env 2>/dev/null; then
+      # Supabase bereits konfiguriert — stelle sicher dass VITE_DB_MODE gesetzt ist
+      if ! grep -q "VITE_DB_MODE" .env 2>/dev/null; then
+        echo "" >> .env
+        echo "VITE_DB_MODE=supabase" >> .env
+      fi
+      log_ok ".env gefunden (Supabase-Credentials vorhanden)"
+    else
+      log_info "Erstelle .env fuer Supabase..."
+      if [[ -f "src/lib/.env.example" ]]; then
+        cp src/lib/.env.example .env
+      else
+        echo "VITE_SUPABASE_URL=https://dein-projekt.supabase.co" > .env
+        echo "VITE_SUPABASE_ANON_KEY=dein-anon-key" >> .env
+      fi
+      echo "" >> .env
+      echo "# Database mode: supabase for cloud, pglite for local" >> .env
+      echo "VITE_DB_MODE=supabase" >> .env
+      log_warn ".env erstellt. Bitte Supabase-Credentials eintragen!"
+    fi
+  fi
+
+  # Wenn beide gewaehlt wurden, erstelle auch die PGlite-Vorlage
+  if [[ "${choice:-1}" == "3" ]]; then
+    log_info "Erstelle zusaetzliche .env.example.pglite fuer Fallback..."
+    if [[ -f "src/lib/.env.example.pglite" ]]; then
+      log_ok "PGlite-Vorlage bereits vorhanden"
+    fi
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -127,10 +213,8 @@ install_node() {
   tar -xJf "${tmpdir}/${filename}" -C "$INSTALL_DIR" --strip-components=1
   rm -rf "$tmpdir"
 
-  # PATH aktualisieren
   export PATH="${INSTALL_DIR}/bin:${PATH}"
 
-  # In .bashrc / .zshrc eintragen, falls noch nicht vorhanden
   local rc_file
   for rc_file in "$HOME/.bashrc" "$HOME/.zshrc"; do
     if [[ -f "$rc_file" ]]; then
@@ -151,19 +235,6 @@ install_node() {
 setup_project() {
   cd "$PROJECT_DIR"
 
-  # .env pruefen
-  if [[ ! -f ".env" ]]; then
-    if [[ -f "src/lib/.env.example" ]]; then
-      log_warn ".env nicht gefunden. Kopiere von src/lib/.env.example"
-      cp src/lib/.env.example .env
-      log_warn "Bitte .env mit deinen Supabase-Credentials ausfuellen!"
-    else
-      log_warn ".env nicht gefunden und keine Vorlage vorhanden."
-    fi
-  else
-    log_ok ".env gefunden"
-  fi
-
   # node_modules pruefen
   if [[ -d "node_modules" ]]; then
     log_info "node_modules existiert bereits. Aktualisiere Abhaengigkeiten..."
@@ -175,7 +246,6 @@ setup_project() {
 
   log_ok "Abhaengigkeiten installiert ($(ls node_modules | wc -l) Packages)"
 
-  # node_modules/.bin zum PATH hinzufuegen
   export PATH="${PROJECT_DIR}/node_modules/.bin:${PATH}"
 }
 
@@ -210,11 +280,11 @@ main() {
   echo "============================================"
   echo -e "${NC}"
 
-  log_step "1/5  System-Information"
+  log_step "1/6  System-Information"
   log_info "OS:      $(uname -s) $(uname -m)"
   log_info "Projekt: $PROJECT_DIR"
 
-  log_step "2/5  Node.js pruefen"
+  log_step "2/6  Node.js pruefen"
   if check_node; then
     log_ok "Node.js $(node --version) bereits installiert (erfuellt Minimum ${NODE_MIN_MAJOR}.${NODE_MIN_MINOR})"
   else
@@ -222,7 +292,7 @@ main() {
     install_node
   fi
 
-  log_step "3/5  npm pruefen"
+  log_step "3/6  npm pruefen"
   if check_npm; then
     log_ok "npm $(npm --version) bereit"
   else
@@ -230,10 +300,14 @@ main() {
     exit 1
   fi
 
-  log_step "4/5  Projekt-Abhaengigkeiten"
-  setup_project
+  log_step "4/6  Datenbank-Auswahl"
+  select_database
 
-  log_step "5/5  Verifikation"
+  log_step "5/6  Projekt-Abhaengigkeiten & .env"
+  setup_project
+  setup_env
+
+  log_step "6/6  Verifikation"
   verify_project
 
   echo ""
@@ -244,10 +318,19 @@ main() {
   echo -e "  Node.js:  $(node --version)"
   echo -e "  npm:      $(npm --version)"
   echo -e "  Projekt:  ${PROJECT_DIR}"
+  echo -e "  Datenbank: ${BOLD}${DB_MODE}${NC}"
   echo ""
-  if [[ ! -f ".env" ]] || grep -q "DEINE" .env 2>/dev/null; then
-    echo -e "${YELLOW}  Aktion noetig: .env mit Supabase-Credentials ausfuellen${NC}"
+
+  if [[ "$DB_MODE" == "supabase" ]]; then
+    if [[ ! -f ".env" ]] || grep -q "DEINE\|dein-" .env 2>/dev/null; then
+      echo -e "${YELLOW}  Aktion noetig: .env mit Supabase-Credentials ausfuellen${NC}"
+    fi
+  else
+    echo -e "${GREEN}  PGlite: Keine weitere Konfiguration noetig.${NC}"
+    echo -e "  Die Datenbank wird beim ersten Start im Browser erstellt."
   fi
+
+  echo ""
   echo -e "  Starten mit:  ${BOLD}npm run dev${NC}"
   echo ""
 }

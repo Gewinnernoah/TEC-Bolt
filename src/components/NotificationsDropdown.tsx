@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Bell, Check } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import type { AppNotification } from '@/lib/types';
 import { timeAgo, cn } from '@/lib/utils';

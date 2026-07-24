@@ -3,7 +3,7 @@ import {
   Mic2, Plus, Calendar, CheckSquare, Square, Trash2, Edit,
   MapPin, Clock, Package, User,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { useRooms } from '@/lib/hooks';
 import { EVENT_STATUS_META } from '@/lib/constants';
 import { cn, formatDateTime, formatDate, logActivity } from '@/lib/utils';

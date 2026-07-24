@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { BarChart3, TrendingUp, Package, HandHelping, Printer, Ticket, Wifi, Boxes } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { cn, formatNumber } from '@/lib/utils';
 import { PageHeader, LoadingScreen } from '@/components/ui';
 import type { LendingLoan, PrintRequest, Ticket as TicketType, Device, WifiMeasurement, Consumable } from '@/lib/types';

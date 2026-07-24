@@ -4,7 +4,7 @@ import {
   Boxes, ClipboardCheck, Printer, Eye, Edit, Trash2, ScanLine,
   Battery, CassetteTape, Cable, Cpu, Download, ChevronRight, Camera, FileText,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import { useDevices, useRooms } from '@/lib/hooks';
 import { DEVICE_STATUS_META, CONDITION_META } from '@/lib/constants';

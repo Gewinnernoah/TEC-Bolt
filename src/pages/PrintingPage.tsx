@@ -3,7 +3,7 @@ import {
   Printer as PrinterIcon, Upload, File, CheckCircle2, XCircle, Layers, Clock,
   Play, Pause, AlertTriangle, FileBox, Cpu, BookOpen, ChevronDown,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import { usePrintRequests } from '@/lib/hooks';
 import { PRINT_STATUS_META } from '@/lib/constants';

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users, Search, Shield, Fingerprint, Edit, Ban, CheckCircle2, UserCog } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import { ROLE_META } from '@/lib/constants';
 import { cn, initials, logActivity } from '@/lib/utils';

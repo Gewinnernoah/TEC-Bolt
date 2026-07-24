@@ -3,7 +3,7 @@ import {
   Radio, Wifi, Building2, Gauge, Activity, TrendingDown,
   Upload, Signal, Zap, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import { useRooms, useWifiMeasurements } from '@/lib/hooks';
 import { useSetting } from '@/lib/settings';

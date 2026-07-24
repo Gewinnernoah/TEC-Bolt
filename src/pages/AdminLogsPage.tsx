@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Monitor, Search, Download } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { timeAgo, downloadFile } from '@/lib/utils';
 import { PageHeader, LoadingScreen, EmptyState } from '@/components/ui';
 import type { ActivityLog } from '@/lib/types';

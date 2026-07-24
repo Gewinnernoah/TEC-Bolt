@@ -3,7 +3,7 @@ import {
   Wifi, HandHelping, Ticket, Printer, AlertTriangle,
   Package, Server, Zap, X, CircleDot, TrendingUp,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { DEVICE_STATUS_META } from '@/lib/constants';
 import { cn, formatDateTime, isOverdue, calculateLessonNumber } from '@/lib/utils';
 import { useSetting } from '@/lib/settings';

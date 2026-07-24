@@ -4,7 +4,7 @@ import {
   ArrowUp, CheckCircle2, MessageSquare, Camera, Send, Gauge,
   Activity, AlertTriangle, MapPin, User, FileText,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import { useTickets, useRooms } from '@/lib/hooks';
 import { TICKET_STATUS_META, TICKET_PRIORITY_META } from '@/lib/constants';

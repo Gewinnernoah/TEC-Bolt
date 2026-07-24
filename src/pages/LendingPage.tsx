@@ -3,7 +3,7 @@ import {
   HandHelping, Plus, Check, X, Clock, Calendar, Package, Sparkles,
   PenTool, ArrowLeft, Search, AlertCircle, MapPin,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import { useDevices, useLoans, useRequests, useRooms } from '@/lib/hooks';
 import { LOAN_STATUS_META, REQUEST_STATUS_META } from '@/lib/constants';
