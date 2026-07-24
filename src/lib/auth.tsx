@@ -152,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      try { sub?.subscription?.unsubscribe?.(); } catch { /* ignore */ }
     };
   }, [loadProfile]);
 

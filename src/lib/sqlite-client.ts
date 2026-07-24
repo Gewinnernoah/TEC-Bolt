@@ -2,8 +2,25 @@
 // Data persists in IndexedDB — no internet connection required.
 // Mimics the Supabase PostgREST query-builder + auth + realtime API.
 
-import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
 import { SCHEMA_SQL, SEED_SQL, uuid } from './sqlite-schema';
+
+// sql.js types (we load the library dynamically to avoid ESM/CJS issues)
+type SqlJsStatic = {
+  Database: new (data?: Uint8Array) => Database;
+};
+type Database = {
+  run(sql: string, params?: unknown[]): void;
+  exec(sql: string, params?: unknown[]): any[];
+  prepare(sql: string): Statement;
+  export(): Uint8Array;
+  close(): void;
+};
+type Statement = {
+  bind(params?: unknown[]): void;
+  step(): boolean;
+  getAsObject(): Record<string, unknown>;
+  free(): void;
+};
 
 // ---------- IndexedDB persistence ----------
 const IDB_DB_NAME = 'techub-sqlite';
@@ -641,23 +658,49 @@ class SqliteClient {
 
 let SQL: SqlJsStatic | null = null;
 
+// Load sql.js from the local public/ folder (no CDN — works offline).
+// We load the browser build via a script tag to avoid ESM/CJS interop issues.
+function loadSqlJs(): Promise<SqlJsStatic> {
+  if (SQL) return Promise.resolve(SQL);
+  return new Promise((resolve, reject) => {
+    const w = window as any;
+    if (w.initSqlJs) {
+      w.initSqlJs({ locateFile: (file: string) => `${import.meta.env.BASE_URL}sql-wasm.wasm` })
+        .then((mod: SqlJsStatic) => { SQL = mod; resolve(mod); })
+        .catch(reject);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = `${import.meta.env.BASE_URL}sql-wasm-browser.js`;
+    script.onload = () => {
+      const initFn = (window as any).initSqlJs;
+      if (!initFn) { reject(new Error('sql.js failed to load')); return; }
+      initFn({ locateFile: (file: string) => `${import.meta.env.BASE_URL}sql-wasm.wasm` })
+        .then((mod: SqlJsStatic) => { SQL = mod; resolve(mod); })
+        .catch(reject);
+    };
+    script.onerror = () => reject(new Error('Failed to load sql-wasm-browser.js'));
+    document.head.appendChild(script);
+  });
+}
+
 export async function createSqliteClient(): Promise<SqliteClient> {
-  if (!SQL) {
-    SQL = await initSqlJs({
-      locateFile: (file: string) => `https://sql.js.org/dist/${file}`,
-    });
-  }
+  console.log('[DB] Initializing SQLite (offline mode)...');
+  const sql = await loadSqlJs();
+  console.log('[DB] SQLite WASM loaded');
 
   const savedData = await loadFromIDB();
   let db: Database;
 
   if (savedData) {
-    db = new SQL.Database(savedData);
+    db = new sql.Database(savedData);
+    console.log('[DB] Loaded existing SQLite database from IndexedDB');
   } else {
-    db = new SQL.Database();
+    db = new sql.Database();
     db.run(SCHEMA_SQL);
     db.run(SEED_SQL);
     await saveToIDB(db.export());
+    console.log('[DB] Created new SQLite database with schema + seed data');
   }
 
   const persist = async () => {
@@ -666,6 +709,7 @@ export async function createSqliteClient(): Promise<SqliteClient> {
 
   const client = new SqliteClient(db, persist);
   await client.initAuth();
+  console.log('[DB] SQLite client ready');
   return client;
 }
 
