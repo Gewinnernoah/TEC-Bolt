@@ -28,7 +28,7 @@ export function TicketsPage() {
   const { data: rooms } = useRooms();
 
   useEffect(() => {
-    supabase.from('ticket_categories').select('*').eq('is_enabled', true).order('sort_order').then(({ data }) => setCategories((data ?? []) as TicketCategory[]));
+    supabase.from('ticket_categories').select('*').eq('is_enabled', true).order('sort_order').then(({ data }: { data: any[] | null }) => setCategories((data ?? []) as TicketCategory[]));
   }, []);
 
   if (loading) return <LoadingScreen message="Loading tickets..." />;
@@ -170,7 +170,7 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
 
       // Measure upload speed
       const ulStart = performance.now();
-      await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: new ArrayBuffer(100000) }).catch(() => null);
+      await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: new Uint8Array(100000) as unknown as BodyInit }).catch(() => null);
       const ulTime = (performance.now() - ulStart) / 1000;
       const uploadMbps = ulTime > 0 ? (100_000 * 8) / (ulTime * 1_000_000) : 0;
 
@@ -305,7 +305,7 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
   const escalateModal = useModal();
 
   useEffect(() => {
-    supabase.from('ticket_comments').select('*, author:profiles(*)').eq('ticket_id', ticket.id).order('created_at', { ascending: false }).then(({ data }) => setComments((data ?? []) as TicketComment[]));
+    supabase.from('ticket_comments').select('*, author:profiles(*)').eq('ticket_id', ticket.id).order('created_at', { ascending: false }).then(({ data }: any) => setComments((data ?? []) as TicketComment[]));
   }, [ticket.id]);
 
   const addComment = async () => {

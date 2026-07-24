@@ -29,7 +29,7 @@ export function MonitoringPage() {
   const [minDownload] = useSetting<number>('wifi_min_download_mbps', 25);
 
   useEffect(() => {
-    supabase.from('buildings').select('*').order('name').then(({ data }) => setBuildings((data ?? []) as Building[]));
+    supabase.from('buildings').select('*').order('name').then(({ data }: any) => setBuildings((data ?? []) as Building[]));
   }, []);
 
   if (loading) return <LoadingScreen message="Loading monitoring data..." />;
@@ -276,7 +276,7 @@ function MeasureTab({ rooms, onSaved, embedded }: { rooms: Room[]; onSaved: () =
       setDownload(dlResponse ? Math.round((1_000_000 * 8) / (dlTime * 1_000_000) * 100) / 100 : 0);
 
       const ulStart = performance.now();
-      await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: new ArrayBuffer(100000) }).catch(() => null);
+      await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: new Uint8Array(100000) as unknown as BodyInit }).catch(() => null);
       const ulTime = (performance.now() - ulStart) / 1000;
       setUpload(ulTime > 0 ? Math.round((100_000 * 8) / (ulTime * 1_000_000) * 100) / 100 : 0);
 

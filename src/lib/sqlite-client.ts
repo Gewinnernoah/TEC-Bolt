@@ -4,21 +4,20 @@
 
 import { SCHEMA_SQL, SEED_SQL, uuid } from './sqlite-schema';
 
-// sql.js types (we load the library dynamically to avoid ESM/CJS issues)
 type SqlJsStatic = {
   Database: new (data?: Uint8Array) => Database;
 };
 type Database = {
-  run(sql: string, params?: unknown[]): void;
-  exec(sql: string, params?: unknown[]): any[];
+  run(sql: string, params?: any[]): void;
+  exec(sql: string, params?: any[]): any[];
   prepare(sql: string): Statement;
   export(): Uint8Array;
   close(): void;
 };
 type Statement = {
-  bind(params?: unknown[]): void;
+  bind(params?: any[]): void;
   step(): boolean;
-  getAsObject(): Record<string, unknown>;
+  getAsObject(): Record<string, any>;
   free(): void;
 };
 
@@ -59,7 +58,7 @@ async function saveToIDB(data: Uint8Array): Promise<void> {
 }
 
 // ---------- JSON helpers ----------
-function parseJSON<T>(val: unknown, fallback: T): T {
+function parseJSON<T>(val: any, fallback: T): T {
   if (val === null || val === undefined) return fallback;
   if (typeof val === 'string') {
     try { return JSON.parse(val); } catch { return fallback; }
@@ -67,14 +66,13 @@ function parseJSON<T>(val: unknown, fallback: T): T {
   return val as T;
 }
 
-function stringifyForDb(val: unknown): string | null {
+function stringifyForDb(val: any): string | null {
   if (val === null || val === undefined) return null;
   if (typeof val === 'string') return val;
   if (typeof val === 'number' || typeof val === 'boolean') return String(val);
   return JSON.stringify(val);
 }
 
-// Normalize a SQLite row: convert integers back to booleans, parse JSON columns
 const JSON_COLUMNS = new Set([
   'metadata', 'webauthn_credentials', 'photos', 'installed_technology',
   'available_connections', 'connections', 'speedtest_result', 'ping_result',
@@ -88,8 +86,8 @@ const BOOL_COLUMNS = new Set([
   'is_enabled', 'is_internal', 'is_completed', 'is_recurring', 'is_read',
 ]);
 
-function normalizeRow(row: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
+function normalizeRow(row: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {};
   for (const [key, val] of Object.entries(row)) {
     if (BOOL_COLUMNS.has(key) && val !== null) {
       out[key] = val === 1 || val === '1' || val === true;
@@ -104,14 +102,14 @@ function normalizeRow(row: Record<string, unknown>): Record<string, unknown> {
 
 // ---------- Query Builder ----------
 
-type Row = Record<string, unknown>;
+type Row = Record<string, any>;
 type PostgrestError = { message: string };
 
 class QueryBuilder<T = Row> {
   private _table: string;
   private _select: string | null = null;
   private _where: string[] = [];
-  private _whereParams: unknown[] = [];
+  private _whereParams: any[] = [];
   private _order: { column: string; ascending: boolean } | null = null;
   private _limit: number | null = null;
   private _insertData: Row | Row[] | null = null;
@@ -157,8 +155,6 @@ class QueryBuilder<T = Row> {
       }
     }
   }
-
-  // ---- filters ----
 
   eq(column: string, value: unknown): this {
     this._where.push(`${column} = ?`);
@@ -230,7 +226,6 @@ class QueryBuilder<T = Row> {
   or(_filter: string): this { return this; }
 
   contains(column: string, value: unknown): this {
-    // SQLite doesn't have array containment; use LIKE for simple values
     if (Array.isArray(value)) {
       const conditions = value.map(() => `${column} LIKE ?`).join(' OR ');
       this._where.push(`(${conditions})`);
@@ -248,8 +243,6 @@ class QueryBuilder<T = Row> {
 
   range(from: number, to: number): this { this._limit = to - from + 1; return this; }
 
-  // ---- mutations ----
-
   insert(data: Row | Row[]): this { this._insertData = data; return this; }
   update(data: Row): this { this._updateData = data; return this; }
   delete(): this { this._isDelete = true; return this; }
@@ -265,16 +258,12 @@ class QueryBuilder<T = Row> {
     return this._execute() as Promise<{ data: T | null; error: PostgrestError | null }>;
   }
 
-  // ---- encoding ----
-
   private _encode(val: unknown): string | null {
     if (val === null || val === undefined) return null;
     if (typeof val === 'boolean') return val ? '1' : '0';
     if (typeof val === 'object') return JSON.stringify(val);
     return String(val);
   }
-
-  // ---- execution ----
 
   private async _execute(): Promise<{ data: unknown; error: PostgrestError | null }> {
     try {
@@ -305,10 +294,8 @@ class QueryBuilder<T = Row> {
 
     let docs = rows.map(normalizeRow);
 
-    // Hydrate relationships
     for (const [alias, rel] of this._relationships) {
       if (rel.nested) {
-        // Child table references back: <singular>_id
         const singular = this._table.replace(/s$/, '');
         const childFk = `${singular}_id`;
         const parentIds = docs.map((d) => d.id).filter(Boolean) as string[];
@@ -328,7 +315,6 @@ class QueryBuilder<T = Row> {
         }
         for (const doc of docs) doc[alias] = byParent.get(doc.id as string) ?? [];
       } else {
-        // FK on this table pointing to parent
         const fkValues = docs.map((d) => d[rel.fkCol]).filter(Boolean) as string[];
         if (fkValues.length === 0) { docs.forEach((d) => (d[alias] = null)); continue; }
         const uniqueFk = [...new Set(fkValues)];
@@ -372,7 +358,6 @@ class QueryBuilder<T = Row> {
       if (!row.updated_at) row.updated_at = new Date().toISOString();
 
       if (this._isUpsert) {
-        const conflictCol = row.key ? 'key' : row.id ? 'id' : row.email ? 'email' : row.inventory_number ? 'inventory_number' : 'id';
         const cols = Object.keys(row);
         const placeholders = cols.map(() => '?').join(',');
         const sql = `INSERT OR REPLACE INTO ${this._table} (${cols.join(',')}) VALUES (${placeholders})`;
@@ -390,8 +375,8 @@ class QueryBuilder<T = Row> {
     return { data: results, error: null };
   }
 
-  private _execUpdate(): { data: unknown; error: PostgrestError | null } {
-    const updateData = { ...this._updateData!, updated_at: new Date().toISOString() };
+  private _execUpdate(): { data: any; error: PostgrestError | null } {
+    const updateData: Record<string, any> = { ...this._updateData!, updated_at: new Date().toISOString() };
     const cols = Object.keys(updateData);
     const setClause = cols.map((c) => `${c} = ?`).join(',');
     const params = cols.map((c) => this._encode(updateData[c]));
@@ -403,22 +388,18 @@ class QueryBuilder<T = Row> {
     }
     this._db.run(sql, params);
 
-    // Return updated rows
     return this._execSelect();
   }
 
-  private _execDelete(): { data: unknown; error: PostgrestError | null } {
-    // Fetch rows before deleting
+  private _execDelete(): { data: any; error: PostgrestError | null } {
     const selectResult = this._execSelect();
     const docs = (selectResult.data as Row[]) ?? [];
 
     let sql = `DELETE FROM ${this._table}`;
-    const params: unknown[] = [];
     if (this._where.length > 0) {
       sql += ` WHERE ${this._where.join(' AND ')}`;
-      params.push(...this._whereParams);
     }
-    this._db.run(sql, params);
+    this._db.run(sql, this._whereParams);
 
     if (this._expectSingle || this._expectMaybeSingle) return { data: docs[0] ?? null, error: null };
     return { data: docs, error: null };
@@ -498,7 +479,7 @@ async function createSqliteAuth(db: Database, persist: () => Promise<void>) {
       const row = stmt.getAsObject() as Row;
       session = {
         access_token: sessionToken,
-        user: { id: row.user_id, email: row.email },
+        user: { id: row.user_id as string, email: row.email as string },
         expires_at: new Date(row.expires_at as string).getTime() / 1000,
       };
     }
@@ -527,19 +508,19 @@ async function createSqliteAuth(db: Database, persist: () => Promise<void>) {
     sessionToken = generateToken();
     const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
     db.run('INSERT INTO auth_sessions (id, token, user_id, email, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [uuid(), sessionToken, row.id, email, expiresAt, new Date().toISOString()]);
+      [uuid(), sessionToken, row.id as string, email, expiresAt, new Date().toISOString()]);
     await persist();
 
     const session = {
       access_token: sessionToken,
-      user: { id: row.id, email },
+      user: { id: row.id as string, email },
       expires_at: Math.floor(Date.now() / 1000) + 30 * 24 * 3600,
     };
     notify('SIGNED_IN', session);
     return { data: { user: session.user, session }, error: null };
   }
 
-  async function signUp({ email, password, options }: { email: string; password: string; options?: { data?: Record<string, unknown> } }) {
+  async function signUp({ email, password, options }: { email: string; password: string; options?: { data?: Record<string, any> } }) {
     const checkStmt = db.prepare('SELECT id FROM auth_users WHERE email = ? LIMIT 1');
     checkStmt.bind([email]);
     if (checkStmt.step()) {
@@ -590,7 +571,7 @@ async function createSqliteAuth(db: Database, persist: () => Promise<void>) {
 
   function onAuthStateChange(callback: (event: string, session: any) => void) {
     listeners.push(callback);
-    getSession().then(({ data }) => callback('INITIAL_SESSION', data.session));
+    getSession().then(({ data }: any) => callback('INITIAL_SESSION', data.session));
     return {
       subscription: {
         unsubscribe: () => {
@@ -604,7 +585,7 @@ async function createSqliteAuth(db: Database, persist: () => Promise<void>) {
   return { getSession, getUser, signInWithPassword, signUp, signOut, resetPasswordForEmail, onAuthStateChange };
 }
 
-// ---------- Crypto helpers (Web Crypto API) ----------
+// ---------- Crypto helpers ----------
 
 async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -658,8 +639,6 @@ class SqliteClient {
 
 let SQL: SqlJsStatic | null = null;
 
-// Load sql.js from the local public/ folder (no CDN — works offline).
-// We load the browser build via a script tag to avoid ESM/CJS interop issues.
 function loadSqlJs(): Promise<SqlJsStatic> {
   if (SQL) return Promise.resolve(SQL);
   return new Promise((resolve, reject) => {

@@ -29,7 +29,7 @@ export function NotificationsDropdown({ onClose }: { onClose: () => void }) {
 
     channel = supabase
       .channel('notifications-feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload: any) => {
         const n = payload.new as AppNotification;
         if (n.user_id === null || n.user_id === profile.id) {
           setNotifications((prev) => [n, ...prev].slice(0, 20));

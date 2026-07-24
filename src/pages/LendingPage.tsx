@@ -221,8 +221,8 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
   const toast = useToast();
 
   useEffect(() => {
-    supabase.from('lending_periods').select('*').order('sort_order').then(({ data }) => setPeriods((data ?? []) as LendingPeriod[]));
-    supabase.from('device_bundles').select('*, items:device_bundle_items(*)').order('name').then(({ data }) => setBundles((data ?? []) as DeviceBundle[]));
+    supabase.from('lending_periods').select('*').order('sort_order').then(({ data }: any) => setPeriods((data ?? []) as LendingPeriod[]));
+    supabase.from('device_bundles').select('*, items:device_bundle_items(*)').order('name').then(({ data }: any) => setBundles((data ?? []) as DeviceBundle[]));
   }, []);
 
   // Smart recommendations based on room
@@ -378,7 +378,7 @@ function FulfillModal({ request, devices, onClose, onSaved }: { request: Lending
   const toast = useToast();
 
   useEffect(() => {
-    supabase.from('lending_periods').select('*').order('sort_order').then(({ data }) => setPeriods((data ?? []) as LendingPeriod[]));
+    supabase.from('lending_periods').select('*').order('sort_order').then(({ data }: any) => setPeriods((data ?? []) as LendingPeriod[]));
   }, []);
 
   const period = periods.find((p) => p.id === request.period_id);

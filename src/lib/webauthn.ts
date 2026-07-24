@@ -15,16 +15,16 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-function randomChallenge(): Uint8Array {
+function randomChallenge(): BufferSource {
   const arr = new Uint8Array(32);
   crypto.getRandomValues(arr);
-  return arr;
+  return arr as unknown as BufferSource;
 }
 
-function randomUserId(): Uint8Array {
+function randomUserId(): BufferSource {
   const arr = new Uint8Array(16);
   crypto.getRandomValues(arr);
-  return arr;
+  return arr as unknown as BufferSource;
 }
 
 function isWebAuthnAvailable(): boolean {
@@ -77,7 +77,6 @@ export async function enrollFingerprint(profile: Profile): Promise<{ error: stri
       id: rawId,
       publicKey: pubKey,
       transports: [],
-
       createdAt: Date.now(),
     });
 
@@ -108,7 +107,7 @@ export async function verifyFingerprint(profile: Profile): Promise<{ success: bo
       challenge: randomChallenge(),
       allowCredentials: [
         {
-          id: base64ToArrayBuffer(cred.id),
+          id: base64ToArrayBuffer(cred.id) as unknown as BufferSource,
           type: 'public-key',
           transports: cred.transports as AuthenticatorTransport[] | undefined,
         },

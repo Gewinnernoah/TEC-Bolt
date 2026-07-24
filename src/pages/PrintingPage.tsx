@@ -251,7 +251,7 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    supabase.from('filament_catalog').select('*').eq('is_available', true).order('sort_order').then(({ data }) => setCatalog((data ?? []) as FilamentCatalogEntry[]));
+    supabase.from('filament_catalog').select('*').eq('is_available', true).order('sort_order').then(({ data }: any) => setCatalog((data ?? []) as FilamentCatalogEntry[]));
   }, []);
 
   const handleFile = (file: File) => {

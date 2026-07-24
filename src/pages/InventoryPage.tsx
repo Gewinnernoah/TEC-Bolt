@@ -37,7 +37,7 @@ export function InventoryPage() {
   const deleteModal = useModal();
 
   useEffect(() => {
-    supabase.from('inventory_categories').select('*').order('sort_order').then(({ data }) => {
+    supabase.from('inventory_categories').select('*').order('sort_order').then(({ data }: any) => {
       if (data) setCategories(data as InventoryCategory[]);
     });
   }, []);
@@ -911,7 +911,7 @@ function DeviceDetailModal({ device, onClose, onEdit, onPrintLabel, onViewStorag
   const toast = useToast();
 
   useEffect(() => {
-    supabase.from('device_notes').select('*, author:profiles(*)').eq('device_id', device.id).order('created_at', { ascending: false }).then(({ data }) => {
+    supabase.from('device_notes').select('*, author:profiles(*)').eq('device_id', device.id).order('created_at', { ascending: false }).then(({ data }: any) => {
       setNotes((data ?? []) as DeviceNote[]);
     });
   }, [device.id]);
@@ -979,8 +979,8 @@ function StorageViewModal({ device, onClose }: { device: Device; onClose: () => 
 
   useEffect(() => {
     if (!device.cabinet_id) return;
-    supabase.from('cabinets').select('*').eq('id', device.cabinet_id).single().then(({ data }) => setCabinet(data as Cabinet | null));
-    supabase.from('shelves').select('*').eq('cabinet_id', device.cabinet_id).order('row_index').order('col_index').then(({ data }) => setShelves((data ?? []) as Shelf[]));
+    supabase.from('cabinets').select('*').eq('id', device.cabinet_id).single().then(({ data }: any) => setCabinet(data as Cabinet | null));
+    supabase.from('shelves').select('*').eq('cabinet_id', device.cabinet_id).order('row_index').order('col_index').then(({ data }: any) => setShelves((data ?? []) as Shelf[]));
   }, [device.cabinet_id]);
 
   const shelf = shelves.find((s) => s.id === device.shelf_id);

@@ -159,7 +159,7 @@ function EventDetailModal({ event, onClose, onUpdated }: { event: SchoolEvent; o
   const toast = useToast();
 
   useEffect(() => {
-    supabase.from('profiles').select('*').order('full_name').then(({ data }) => setProfiles((data ?? []) as Profile[]));
+    supabase.from('profiles').select('*').order('full_name').then(({ data }: any) => setProfiles((data ?? []) as Profile[]));
   }, []);
 
   const addTask = async () => {
