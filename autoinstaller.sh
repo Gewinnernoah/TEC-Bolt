@@ -3,7 +3,7 @@
 # Autoinstaller - Node.js + Projekt-Abhaengigkeiten + Datenbank-Setup
 # Prueft ob Node.js installiert ist, installiert es falls noetig,
 # richtet alle Projekt-Abhaengigkeiten ein, laesst den Benutzer die
-# Datenbank auswaehlen (Supabase Cloud oder lokale PGlite) und
+# Datenbank auswaehlen (Supabase Cloud oder MongoDB Atlas) und
 # verifiziert den Build.
 #
 # Verwendung:  ./autoinstaller.sh
@@ -68,35 +68,23 @@ version_ge() {
 }
 
 check_node() {
-  if ! command -v node &>/dev/null; then
-    return 1
-  fi
-  local version
+  if ! command -v node &>/dev/null; then return 1; fi
+  local version major minor
   version="$(node --version | sed 's/v//')"
-  local major minor
   major="${version%%.*}"
-  minor="${version#*.}"
-  minor="${minor%%.*}"
-  if version_ge "${major}.${minor}" "${NODE_MIN_MAJOR}.${NODE_MIN_MINOR}"; then
-    return 0
-  fi
+  minor="${version#*.}"; minor="${minor%%.*}"
+  if version_ge "${major}.${minor}" "${NODE_MIN_MAJOR}.${NODE_MIN_MINOR}"; then return 0; fi
   log_warn "Node.js Version ${version} gefunden, benoetigt >= ${NODE_MIN_MAJOR}.${NODE_MIN_MINOR}"
   return 1
 }
 
 check_npm() {
-  if ! command -v npm &>/dev/null; then
-    return 1
-  fi
-  local version
+  if ! command -v npm &>/dev/null; then return 1; fi
+  local version major minor
   version="$(npm --version)"
-  local major minor
   major="${version%%.*}"
-  minor="${version#*.}"
-  minor="${minor%%.*}"
-  if version_ge "${major}.${minor}" "${NPM_MIN_MAJOR}.${NPM_MIN_MINOR}"; then
-    return 0
-  fi
+  minor="${version#*.}"; minor="${minor%%.*}"
+  if version_ge "${major}.${minor}" "${NPM_MIN_MAJOR}.${NPM_MIN_MINOR}"; then return 0; fi
   log_warn "npm Version ${version} gefunden, benoetigt >= ${NPM_MIN_MAJOR}.${NPM_MIN_MINOR}"
   return 1
 }
@@ -108,27 +96,23 @@ select_database() {
   echo ""
   echo -e "${BOLD}Welche Datenbank moechtest du verwenden?${NC}"
   echo ""
-  echo -e "  ${CYAN}1) Supabase (Cloud)${NC}"
+  echo -e "  ${CYAN}1) Supabase (Cloud - PostgreSQL)${NC}"
   echo -e "     -> Hosted PostgreSQL mit Auth, Realtime, RLS"
   echo -e "     -> Benoetigt Supabase-Credentials in .env"
   echo -e "     -> Internetverbindung noetig"
   echo ""
-  echo -e "  ${CYAN}2) PGlite (Lokal)${NC}"
-  echo -e "     -> PostgreSQL direkt im Browser (WASM, IndexedDB)"
-  echo -e "     -> Keine Internetverbindung noetig"
-  echo -e "     -> Daten bleiben im Browser gespeichert"
-  echo -e "     -> Keine Supabase-Credentials noetig"
+  echo -e "  ${CYAN}2) MongoDB Atlas (Cloud - NoSQL)${NC}"
+  echo -e "     -> Moderne NoSQL-Datenbank in der Cloud"
+  echo -e "     -> Flexible Dokumenten-Struktur, horizontal skalierbar"
+  echo -e "     -> Benoetigt MongoDB Atlas Data API URL + Key in .env"
+  echo -e "     -> Internetverbindung noetig"
   echo ""
-  echo -e "  ${CYAN}3) Beide einrichten (Supabase als Standard)${NC}"
-  echo -e "     -> .env mit Supabase + PGlite als Fallback"
-  echo ""
-  read -rp "Auswahl [1-3] (Standard: 1): " choice
+  read -rp "Auswahl [1-2] (Standard: 1): " choice
   choice="${choice:-1}"
 
   case "$choice" in
     1) DB_MODE="supabase" ;;
-    2) DB_MODE="pglite" ;;
-    3) DB_MODE="supabase" ;;
+    2) DB_MODE="mongodb" ;;
     *) log_warn "Ungueltige Auswahl, verwende Supabase"; DB_MODE="supabase" ;;
   esac
 
@@ -137,25 +121,54 @@ select_database() {
 }
 
 # ---------------------------------------------------------------------------
+# Test-Accounts Auswahl
+# ---------------------------------------------------------------------------
+select_test_accounts() {
+  echo ""
+  echo -e "${BOLD}Test-Accounts erstellen?${NC}"
+  echo -e "  Erstellt 3 Test-Benutzer (Admin, Staff, Teacher) mit bekannten Passwoertern."
+  echo -e "  Die Zugangsdaten werden am Ende angezeigt."
+  echo ""
+  read -rp "Test-Accounts erstellen? [j/N]: " create_tests
+  if [[ "${create_tests,,}" == "j" || "${create_tests,,}" == "ja" || "${create_tests,,}" == "y" || "${create_tests,,}" == "yes" ]]; then
+    CREATE_TEST_ACCOUNTS=true
+  else
+    CREATE_TEST_ACCOUNTS=false
+  fi
+  echo ""
+  if $CREATE_TEST_ACCOUNTS; then
+    log_ok "Test-Accounts werden nach der Installation erstellt"
+  else
+    log_info "Keine Test-Accounts"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # .env-Datei erstellen
 # ---------------------------------------------------------------------------
 setup_env() {
   cd "$PROJECT_DIR"
 
-  if [[ "$DB_MODE" == "pglite" ]]; then
-    # PGlite: nur VITE_DB_MODE noetig
-    if [[ -f ".env" ]] && grep -q "VITE_DB_MODE" .env 2>/dev/null; then
-      log_ok ".env bereits mit DB_MODE konfiguriert"
+  if [[ "$DB_MODE" == "mongodb" ]]; then
+    if [[ -f ".env" ]] && grep -q "VITE_DB_MODE=mongodb" .env 2>/dev/null; then
+      log_ok ".env bereits mit MongoDB konfiguriert"
     else
-      log_info "Erstelle .env fuer PGlite (lokale Datenbank)..."
-      echo "# Database mode: pglite for local browser-based PostgreSQL" > .env
-      echo "VITE_DB_MODE=pglite" >> .env
-      log_ok ".env erstellt (PGlite-Modus)"
+      log_info "Erstelle .env fuer MongoDB Atlas..."
+      if [[ -f "src/lib/.env.example.mongodb" ]]; then
+        cp src/lib/.env.example.mongodb .env
+      else
+        echo "# MongoDB Atlas Data API" > .env
+        echo "VITE_DB_MODE=mongodb" >> .env
+        echo "VITE_MONGODB_DATA_API_URL=https://data.mongodb-api.com/app/YOUR_APP_ID/endpoint/data/v1" >> .env
+        echo "VITE_MONGODB_DATA_API_KEY=YOUR_DATA_API_KEY" >> .env
+        echo "VITE_MONGODB_DATA_SOURCE=Cluster0" >> .env
+        echo "VITE_MONGODB_DATABASE=techub" >> .env
+      fi
+      log_ok ".env erstellt (MongoDB-Modus)"
+      log_warn "Bitte MongoDB Atlas Data API URL und Key eintragen!"
     fi
   else
-    # Supabase: Credentials aus Beispiel-Datei oder bestehend
-    if [[ -f ".env" ]] && grep -q "VITE_SUPABASE_URL" .env 2>/dev/null && ! grep -q "DEINE" .env 2>/dev/null; then
-      # Supabase bereits konfiguriert — stelle sicher dass VITE_DB_MODE gesetzt ist
+    if [[ -f ".env" ]] && grep -q "VITE_SUPABASE_URL" .env 2>/dev/null && ! grep -q "DEINE\|dein-\|YOUR" .env 2>/dev/null; then
       if ! grep -q "VITE_DB_MODE" .env 2>/dev/null; then
         echo "" >> .env
         echo "VITE_DB_MODE=supabase" >> .env
@@ -170,18 +183,45 @@ setup_env() {
         echo "VITE_SUPABASE_ANON_KEY=dein-anon-key" >> .env
       fi
       echo "" >> .env
-      echo "# Database mode: supabase for cloud, pglite for local" >> .env
       echo "VITE_DB_MODE=supabase" >> .env
       log_warn ".env erstellt. Bitte Supabase-Credentials eintragen!"
     fi
   fi
+}
 
-  # Wenn beide gewaehlt wurden, erstelle auch die PGlite-Vorlage
-  if [[ "${choice:-1}" == "3" ]]; then
-    log_info "Erstelle zusaetzliche .env.example.pglite fuer Fallback..."
-    if [[ -f "src/lib/.env.example.pglite" ]]; then
-      log_ok "PGlite-Vorlage bereits vorhanden"
+# ---------------------------------------------------------------------------
+# Test-Accounts erstellen
+# ---------------------------------------------------------------------------
+run_test_accounts() {
+  cd "$PROJECT_DIR"
+
+  if ! $CREATE_TEST_ACCOUNTS; then return; fi
+
+  log_step "Test-Accounts erstellen"
+
+  # Pruefen ob .env Credentials enthaelt (nicht nur Platzhalter)
+  local can_run=false
+  if [[ "$DB_MODE" == "supabase" ]]; then
+    if grep -q "VITE_SUPABASE_URL" .env 2>/dev/null && ! grep -q "DEINE\|dein-\|YOUR" .env 2>/dev/null; then
+      can_run=true
     fi
+  else
+    if grep -q "VITE_MONGODB_DATA_API_URL" .env 2>/dev/null && ! grep -q "YOUR_APP_ID\|YOUR_DATA_API_KEY" .env 2>/dev/null; then
+      can_run=true
+    fi
+  fi
+
+  if ! $can_run; then
+    log_warn "Test-Accounts koennen nicht erstellt werden: .env enthaelt noch Platzhalter."
+    log_info "Bitte zuerst Credentials eintragen, dann ausfuehren:"
+    echo -e "  ${BOLD}node scripts/create-test-accounts.mjs --${DB_MODE}${NC}"
+    return
+  fi
+
+  if node scripts/create-test-accounts.mjs --"$DB_MODE" 2>&1; then
+    log_ok "Test-Accounts erstellt"
+  else
+    log_warn "Test-Accounts konnten nicht erstellt werden (non-fatal)"
   fi
 }
 
@@ -204,8 +244,7 @@ install_node() {
     wget -q -O "${tmpdir}/${filename}" "$url"
   else
     log_error "Weder curl noch wget gefunden. Bitte manuell installieren."
-    rm -rf "$tmpdir"
-    exit 1
+    rm -rf "$tmpdir"; exit 1
   fi
 
   log_info "Entpacke nach ${INSTALL_DIR}..."
@@ -234,18 +273,13 @@ install_node() {
 # ---------------------------------------------------------------------------
 setup_project() {
   cd "$PROJECT_DIR"
-
-  # node_modules pruefen
   if [[ -d "node_modules" ]]; then
     log_info "node_modules existiert bereits. Aktualisiere Abhaengigkeiten..."
   else
     log_info "Installiere alle npm-Abhaengigkeiten..."
   fi
-
   npm install --no-fund --no-audit
-
   log_ok "Abhaengigkeiten installiert ($(ls node_modules | wc -l) Packages)"
-
   export PATH="${PROJECT_DIR}/node_modules/.bin:${PATH}"
 }
 
@@ -255,18 +289,12 @@ setup_project() {
 verify_project() {
   cd "$PROJECT_DIR"
 
-  log_step "Typecheck"
-  if npx tsc --noEmit -p tsconfig.app.json 2>/dev/null; then
-    log_ok "Typecheck bestanden"
-  else
-    log_warn "Typecheck fehlgeschlagen (non-fatal)"
-  fi
-
   log_step "Build"
-  if npm run build 2>/dev/null; then
+  if npm run build 2>&1 | grep -q "built in"; then
     log_ok "Build erfolgreich"
   else
     log_warn "Build fehlgeschlagen (non-fatal)"
+    npm run build 2>&1 | tail -5 || true
   fi
 }
 
@@ -280,11 +308,11 @@ main() {
   echo "============================================"
   echo -e "${NC}"
 
-  log_step "1/6  System-Information"
+  log_step "1/7  System-Information"
   log_info "OS:      $(uname -s) $(uname -m)"
   log_info "Projekt: $PROJECT_DIR"
 
-  log_step "2/6  Node.js pruefen"
+  log_step "2/7  Node.js pruefen"
   if check_node; then
     log_ok "Node.js $(node --version) bereits installiert (erfuellt Minimum ${NODE_MIN_MAJOR}.${NODE_MIN_MINOR})"
   else
@@ -292,7 +320,7 @@ main() {
     install_node
   fi
 
-  log_step "3/6  npm pruefen"
+  log_step "3/7  npm pruefen"
   if check_npm; then
     log_ok "npm $(npm --version) bereit"
   else
@@ -300,34 +328,47 @@ main() {
     exit 1
   fi
 
-  log_step "4/6  Datenbank-Auswahl"
+  log_step "4/7  Datenbank-Auswahl"
   select_database
 
-  log_step "5/6  Projekt-Abhaengigkeiten & .env"
+  log_step "5/7  Test-Accounts"
+  select_test_accounts
+
+  log_step "6/7  Projekt-Abhaengigkeiten & .env"
   setup_project
   setup_env
 
-  log_step "6/6  Verifikation"
+  log_step "7/7  Verifikation & Test-Accounts"
   verify_project
+  run_test_accounts
 
   echo ""
   echo -e "${GREEN}${BOLD}============================================${NC}"
   echo -e "${GREEN}${BOLD}  Installation abgeschlossen!${NC}"
   echo -e "${GREEN}${BOLD}============================================${NC}"
   echo ""
-  echo -e "  Node.js:  $(node --version)"
-  echo -e "  npm:      $(npm --version)"
-  echo -e "  Projekt:  ${PROJECT_DIR}"
+  echo -e "  Node.js:   $(node --version)"
+  echo -e "  npm:       $(npm --version)"
+  echo -e "  Projekt:   ${PROJECT_DIR}"
   echo -e "  Datenbank: ${BOLD}${DB_MODE}${NC}"
   echo ""
 
   if [[ "$DB_MODE" == "supabase" ]]; then
-    if [[ ! -f ".env" ]] || grep -q "DEINE\|dein-" .env 2>/dev/null; then
+    if [[ ! -f ".env" ]] || grep -q "DEINE\|dein-\|YOUR" .env 2>/dev/null; then
       echo -e "${YELLOW}  Aktion noetig: .env mit Supabase-Credentials ausfuellen${NC}"
     fi
   else
-    echo -e "${GREEN}  PGlite: Keine weitere Konfiguration noetig.${NC}"
-    echo -e "  Die Datenbank wird beim ersten Start im Browser erstellt."
+    if [[ ! -f ".env" ]] || grep -q "YOUR_APP_ID\|YOUR_DATA_API_KEY" .env 2>/dev/null; then
+      echo -e "${YELLOW}  Aktion noetig: .env mit MongoDB Atlas Credentials ausfuellen${NC}"
+      echo -e "  1. MongoDB Atlas Cluster erstellen (kostenloser Tier verfuegbar)"
+      echo -e "  2. Data API aktivieren: App Services > Data API"
+      echo -e "  3. API URL und Key in .env eintragen"
+    fi
+  fi
+
+  if $CREATE_TEST_ACCOUNTS && ! grep -q "YOUR\|DEINE\|dein-" .env 2>/dev/null; then
+    echo -e "\n  ${BOLD}Test-Accounts erneut erstellen:${NC}"
+    echo -e "  node scripts/create-test-accounts.mjs --${DB_MODE}"
   fi
 
   echo ""

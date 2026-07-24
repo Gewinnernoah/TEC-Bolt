@@ -1,8 +1,8 @@
-import { IS_PGLITE } from './db-mode';
+import { IS_MONGODB } from './db-mode';
 
 // Unified database client. Exports a proxy that resolves to either:
 // - the Supabase client (when VITE_DB_MODE is "supabase" or unset), or
-// - a local PGlite client (when VITE_DB_MODE is "pglite")
+// - a MongoDB Atlas client (when VITE_DB_MODE is "mongodb")
 //
 // All app code imports { supabase } from '@/lib/db'. Because the client
 // is created asynchronously, we export a thenable proxy that defers
@@ -17,9 +17,9 @@ function initClient(): Promise<Client> {
   if (_initPromise) return _initPromise;
   _initPromise = (async () => {
     let c: Client;
-    if (IS_PGLITE) {
-      const mod = await import('./pglite-client');
-      c = await mod.createPGliteClient();
+    if (IS_MONGODB) {
+      const mod = await import('./mongodb-client');
+      c = await mod.createMongoClient();
     } else {
       const mod = await import('./supabase');
       c = mod.supabase;
@@ -30,11 +30,7 @@ function initClient(): Promise<Client> {
   return _initPromise;
 }
 
-// Start initialization immediately
 const _ready = initClient();
-
-// Create a thenable proxy so `await supabase` and `supabase.from(...)` both work.
-// Property access returns sub-proxies that queue the call until the client is ready.
 
 function makeProxy(path: PropertyKey[] = []): any {
   const fn = function (...args: any[]) {
@@ -44,7 +40,6 @@ function makeProxy(path: PropertyKey[] = []): any {
       return typeof target === 'function' ? target(...args) : target;
     });
   };
-  // Make the proxy thenable so `await supabase` resolves to the client
   (fn as any).then = function (onFulfilled: any, onRejected?: any) {
     return _ready.then((c) => {
       if (path.length === 0) return onFulfilled ? onFulfilled(c) : c;
