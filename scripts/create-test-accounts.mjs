@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 //
 // create-test-accounts.mjs
-// Creates 3 test accounts (admin, staff, teacher) for either Supabase or MongoDB.
+// Creates 3 test accounts (admin, staff, teacher) for either Supabase or SQLite.
 // The passwords are printed to the console.
 //
 // Usage:
 //   node scripts/create-test-accounts.mjs              # auto-detect from .env
 //   node scripts/create-test-accounts.mjs --supabase   # force Supabase
-//   node scripts/create-test-accounts.mjs --mongodb    # force MongoDB
+//   node scripts/create-test-accounts.mjs --sqlite     # force SQLite (browser-only, prints credentials only)
 //
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -24,7 +24,7 @@ if (!existsSync(envPath)) {
 }
 
 const envContent = readFileSync(envPath, 'utf8');
-const env: Record<string, string> = {};
+const env = {};
 for (const line of envContent.split('\n')) {
   const match = line.match(/^VITE_(\w+)=(.*)$/);
   if (match) env[`VITE_${match[1]}`] = match[2].trim();
@@ -34,52 +34,14 @@ for (const line of envContent.split('\n')) {
 const args = process.argv.slice(2);
 let mode = env.VITE_DB_MODE || 'supabase';
 if (args.includes('--supabase')) mode = 'supabase';
-if (args.includes('--mongodb')) mode = 'mongodb';
+if (args.includes('--sqlite')) mode = 'sqlite';
 
 // ---------- Test accounts ----------
 const accounts = [
-  { role: 'admin',  email: 'admin@test.local',  fullName: 'Test Admin',  password: 'Admin123!' },
-  { role: 'staff',  email: 'staff@test.local',  fullName: 'Test Staff',  password: 'Staff123!' },
-  { role: 'teacher',email: 'teacher@test.local',fullName: 'Test Teacher',password: 'Teacher123!' },
+  { role: 'admin',   email: 'admin@test.local',   fullName: 'Test Admin',   password: 'Admin123!' },
+  { role: 'staff',   email: 'staff@test.local',   fullName: 'Test Staff',   password: 'Staff123!' },
+  { role: 'teacher', email: 'teacher@test.local', fullName: 'Test Teacher', password: 'Teacher123!' },
 ];
-
-// ---------- PBKDF2 hashing (for MongoDB mode) ----------
-const crypto = await import('crypto');
-
-function hashPasswordPbkdf2(password) {
-  const salt = crypto.randomBytes(16);
-  const hash = crypto.pbkdf2Sync(password, salt, 100000, 32, 'sha256');
-  const saltHex = salt.toString('hex');
-  const hashHex = hash.toString('hex');
-  return `pbkdf2:100000:${saltHex}:${hashHex}`;
-}
-
-function uuid() {
-  return crypto.randomUUID();
-}
-
-// ---------- MongoDB Data API ----------
-async function mongoApiCall(action, body) {
-  const baseUrl = env.VITE_MONGODB_DATA_API_URL;
-  const apiKey = env.VITE_MONGODB_DATA_API_KEY;
-  const dataSource = env.VITE_MONGODB_DATA_SOURCE || 'Cluster0';
-  const database = env.VITE_MONGODB_DATABASE || 'techub';
-
-  if (!baseUrl || !apiKey) {
-    throw new Error('MongoDB Data API nicht konfiguriert. VITE_MONGODB_DATA_API_URL und VITE_MONGODB_DATA_API_KEY in .env setzen.');
-  }
-
-  const res = await fetch(`${baseUrl}/action/${action}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
-    body: JSON.stringify({ dataSource, database, ...body }),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`MongoDB API ${action} fehlgeschlagen (${res.status}): ${text}`);
-  }
-  return res.json();
-}
 
 // ---------- Supabase Auth ----------
 async function supabaseSignUp(email, password, fullName, role) {
@@ -100,7 +62,6 @@ async function supabaseSignUp(email, password, fullName, role) {
   });
   const data = await res.json();
   if (!res.ok) {
-    // User might already exist
     if (data?.message?.includes('already') || data?.code === 'user_already_exists') {
       return { alreadyExists: true };
     }
@@ -116,87 +77,51 @@ async function main() {
   console.log(`\x1b[36m  Datenbank-Modus: ${mode}\x1b[0m`);
   console.log('\x1b[36m========================================\x1b[0m\n');
 
-  const created = [];
+  if (mode === 'sqlite') {
+    console.log('\x1b[33m[HINWEIS] SQLite laeuft im Browser. Accounts koennen nicht vom Terminal erstellt werden.\x1b[0m');
+    console.log('\x1b[33mDie App erstellt die Datenbank beim ersten Start automatisch.\x1b[0m');
+    console.log('\x1b[33mDu kannst dich ueber die Anmeldeseite registrieren oder folgende Zugangsdaten\nnach der Registrierung verwenden:\x1b[0m\n');
+  }
 
   for (const acc of accounts) {
+    if (mode === 'sqlite') {
+      const role = acc.role.padEnd(10);
+      const email = acc.email.padEnd(21);
+      console.log(`  \x1b[32m[EMPFOHLEN]\x1b[0m ${role} ${email} \x1b[33m${acc.password}\x1b[0m`);
+      continue;
+    }
+
     try {
-      if (mode === 'mongodb') {
-        // Check if already exists
-        const existing = await mongoApiCall('findOne', {
-          collection: 'auth_users',
-          filter: { email: acc.email },
-        });
-        if (existing.document) {
-          console.log(`  \x1b[33m[EXISTIERT]\x1b[0m ${acc.role}: ${acc.email}`);
-          created.push({ ...acc, status: 'exists' });
-          continue;
-        }
-
-        const userId = uuid();
-        const hash = hashPasswordPbkdf2(acc.password);
-
-        await mongoApiCall('insertOne', {
-          collection: 'auth_users',
-          document: { id: userId, email: acc.email, password_hash: hash, created_at: new Date().toISOString() },
-        });
-
-        await mongoApiCall('insertOne', {
-          collection: 'profiles',
-          document: {
-            id: userId,
-            email: acc.email,
-            full_name: acc.fullName,
-            role: acc.role,
-            department: null,
-            phone: null,
-            avatar_url: null,
-            fingerprint_enrolled: false,
-            fingerprint_credential_id: null,
-            webauthn_credentials: [],
-            is_active: true,
-            exempt_auto_logout: acc.role === 'admin',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        });
-
-        console.log(`  \x1b[32m[ERSTELLT]\x1b[0m  ${acc.role}: ${acc.email}`);
-        created.push({ ...acc, status: 'created' });
+      const result = await supabaseSignUp(acc.email, acc.password, acc.fullName, acc.role);
+      if (result.alreadyExists) {
+        console.log(`  \x1b[33m[EXISTIERT]\x1b[0m ${acc.role}: ${acc.email}`);
       } else {
-        // Supabase mode
-        const result = await supabaseSignUp(acc.email, acc.password, acc.fullName, acc.role);
-        if (result.alreadyExists) {
-          console.log(`  \x1b[33m[EXISTIERT]\x1b[0m ${acc.role}: ${acc.email}`);
-          created.push({ ...acc, status: 'exists' });
-        } else {
-          console.log(`  \x1b[32m[ERSTELLT]\x1b[0m  ${acc.role}: ${acc.email}`);
-          created.push({ ...acc, status: 'created' });
-        }
+        console.log(`  \x1b[32m[ERSTELLT]\x1b[0m  ${acc.role}: ${acc.email}`);
       }
     } catch (e) {
       console.error(`  \x1b[31m[FEHLER]\x1b[0m  ${acc.role}: ${e.message}`);
-      created.push({ ...acc, status: 'error', error: e.message });
     }
   }
 
-  // Print credentials
+  // Print credentials table
   console.log('\n\x1b[36m========================================\x1b[0m');
   console.log('\x1b[36m  Zugangsdaten (Test-Accounts)\x1b[0m');
   console.log('\x1b[36m========================================\x1b[0m\n');
   console.log('  \x1b[1mRolle      Email                 Passwort\x1b[0m');
   console.log('  \x1b[2m---------- --------------------- ----------\x1b[0m');
-  for (const acc of created) {
+  for (const acc of accounts) {
     const role = acc.role.padEnd(10);
     const email = acc.email.padEnd(21);
-    const pass = acc.password;
-    if (acc.status === 'error') {
-      console.log(`  ${role} ${email} \x1b[31m${acc.error}\x1b[0m`);
-    } else {
-      console.log(`  ${role} ${email} \x1b[33m${pass}\x1b[0m`);
-    }
+    console.log(`  ${role} ${email} \x1b[33m${acc.password}\x1b[0m`);
   }
   console.log('\n  \x1b[33mWICHTIG: Diese Passwoerter nur fuer Tests verwenden!\x1b[0m');
-  console.log('  \x1b[33mIn Produktion durch sichere Passwoerter ersetzen.\x1b[0m\n');
+  console.log('  \x1b[33mIn Produktion durch sichere Passwoerter ersetzen.\x1b[0m');
+
+  if (mode === 'sqlite') {
+    console.log('\n  \x1b[36mSQLite: Registriere dich in der App mit den oben genannten Emails.\x1b[0m');
+    console.log('  \x1b[36mDie Datenbank wird lokal im Browser gespeichert.\x1b[0m');
+  }
+  console.log('');
 }
 
 main().catch((e) => {

@@ -1,12 +1,9 @@
-import { IS_MONGODB } from './db-mode';
+import { IS_SQLITE } from './db-mode';
 
 // Unified database client. Exports a proxy that resolves to either:
 // - the Supabase client (when VITE_DB_MODE is "supabase" or unset), or
-// - a MongoDB Atlas client (when VITE_DB_MODE is "mongodb")
-//
-// All app code imports { supabase } from '@/lib/db'. Because the client
-// is created asynchronously, we export a thenable proxy that defers
-// property access until the underlying client is ready.
+// - a SQLite client (when VITE_DB_MODE is "sqlite") — runs entirely in the
+//   browser via sql.js (WASM), data persists in IndexedDB, no internet needed.
 
 type Client = any;
 let _client: Client | null = null;
@@ -17,9 +14,9 @@ function initClient(): Promise<Client> {
   if (_initPromise) return _initPromise;
   _initPromise = (async () => {
     let c: Client;
-    if (IS_MONGODB) {
-      const mod = await import('./mongodb-client');
-      c = await mod.createMongoClient();
+    if (IS_SQLITE) {
+      const mod = await import('./sqlite-client');
+      c = await mod.createSqliteClient();
     } else {
       const mod = await import('./supabase');
       c = mod.supabase;

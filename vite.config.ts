@@ -12,6 +12,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['lucide-react', '@electric-sql/pglite'],
+    exclude: ['lucide-react', 'sql.js'],
   },
 });
