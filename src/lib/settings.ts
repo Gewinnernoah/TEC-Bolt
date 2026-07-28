@@ -12,18 +12,28 @@ export function getSetting<T>(key: string, fallback: T): T {
 
 export async function loadSettings(): Promise<void> {
   const { data, error } = await supabase.from('system_settings').select('*');
-  if (error || !data) return;
+  if (error) {
+    console.error('[Settings] Failed to load settings:', error.message);
+    return;
+  }
+  if (!data) return;
   for (const row of data as SystemSetting[]) {
     cache.set(row.key, row.value);
     listeners.get(row.key)?.forEach((fn) => fn(row.value));
   }
+  console.log(`[Settings] Loaded ${data.length} settings`);
 }
 
 export async function updateSetting(key: string, value: unknown): Promise<{ error: string | null }> {
+  console.log(`[Settings] Updating "${key}" →`, value);
   const { error } = await supabase.from('system_settings').upsert({ key, value });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error(`[Settings] Failed to update "${key}":`, error.message);
+    return { error: error.message };
+  }
   cache.set(key, value);
   listeners.get(key)?.forEach((fn) => fn(value));
+  console.log(`[Settings] Updated "${key}" successfully`);
   return { error: null };
 }
 
