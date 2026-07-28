@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { loadSettings } from '@/lib/settings';
+import { dbReady } from '@/lib/db';
 import { ToastProvider } from '@/components/Toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppShell } from '@/components/AppShell';
@@ -103,6 +104,52 @@ function AppContent() {
 }
 
 export default function App() {
+  const [dbLoading, setDbLoading] = useState(true);
+  const [dbError, setDbError] = useState<string | null>(null);
+
+  useEffect(() => {
+    dbReady
+      .then(() => setDbLoading(false))
+      .catch((e: Error) => {
+        console.error('[App] Database initialization failed:', e);
+        setDbError(e.message || 'Unknown database error');
+        setDbLoading(false);
+      });
+  }, []);
+
+  if (dbLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0e1a]">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-slate-700 border-t-blue-500" />
+          <p className="mt-3 text-sm text-slate-400">Datenbank wird initialisiert...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (dbError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0e1a] p-6">
+        <div className="max-w-lg rounded-xl border border-red-900/50 bg-red-950/20 p-8 text-center">
+          <h2 className="text-xl font-bold text-red-400">Datenbankfehler</h2>
+          <p className="mt-2 text-sm text-slate-400">
+            Die Datenbank konnte nicht initialisiert werden. Bitte Seite neu laden.
+          </p>
+          <pre className="mt-4 max-h-40 overflow-auto rounded-lg bg-black/40 p-3 text-left text-xs text-red-300">
+            {dbError}
+          </pre>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+          >
+            Neu laden
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <AuthProvider>

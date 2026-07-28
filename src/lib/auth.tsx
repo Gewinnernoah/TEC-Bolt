@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
-import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
-import { supabase } from './db';
+import type { Session } from '@supabase/supabase-js';
+import { supabase, dbReady } from './db';
 import type { Profile, UserRole } from './types';
 import { logActivity } from './utils';
 
@@ -39,8 +39,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const isSqlite = import.meta.env.VITE_DB_MODE === 'sqlite';
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -49,15 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadProfile = useCallback(async (userId: string): Promise<Profile | null> => {
-    if (isSqlite) return null;
-
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .maybeSingle();
     if (error) {
-      console.error('Failed to load profile:', error.message);
+      console.error('[Auth] Failed to load profile:', error.message);
       return null;
     }
     return data as Profile | null;
@@ -72,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await logActivity('auth.signout');
-    if (!isSqlite) await supabase.auth.signOut();
+    await supabase.auth.signOut();
     setProfile(null);
     setSession(null);
     setLocked(false);
@@ -91,11 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const unlock = useCallback(async (password: string): Promise<{ error: string | null }> => {
     const email: string | null = session?.user?.email ?? (() => { try { return localStorage.getItem(LOCK_STORAGE_KEY); } catch { return null; } })();
     if (!email) return { error: 'Sitzung abgelaufen. Bitte erneut anmelden.' };
-
-    if (isSqlite) {
-        setLocked(false);
-        return { error: null };
-    }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: translateAuthError(error.message) };
@@ -129,29 +120,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    
-    if (!isSqlite) {
-      supabase.auth.getSession().then(({ data }: { data: { session: Session | null } | any }) => {
+
+    dbReady.then(() => {
+      if (!mounted) return;
+      supabase.auth.getSession().then(({ data }: any) => {
         if (!mounted) return;
-        const s = data?.session as Session | null;
-        const currentSession = s;
-        setSession(currentSession);
-        if (currentSession?.user?.id) {
-          loadProfile(currentSession.user.id).then((p) => {
-            if (mounted) {
-              setProfile(p);
-              setLoading(false);
-            }
+        const s = data?.session ?? null;
+        setSession(s);
+        if (s?.user?.id) {
+          loadProfile(s.user.id).then((p) => {
+            if (mounted) { setProfile(p); setLoading(false); }
           });
         } else {
           setLoading(false);
         }
       });
-    } else {
-      setLoading(false);
-    }
+    });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, s: Session | null) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event: any, s: Session | null) => {
       (async () => {
         if (!mounted) return;
         setSession(s);
@@ -168,13 +154,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
-      try { sub?.subscription?.unsubscribe?.(); } catch { /* ignore */ }
+      try { sub?.data?.subscription?.unsubscribe?.(); } catch { /* ignore */ }
     };
   }, [loadProfile]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    if (isSqlite) return { error: null };
-    
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: translateAuthError(error.message) };
     await logActivity('auth.signin');
@@ -182,8 +166,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName: string, role: UserRole = 'teacher') => {
-    if (isSqlite) return { error: null };
-
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -197,8 +179,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
-    if (isSqlite) return { error: null };
-
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/`,
     });

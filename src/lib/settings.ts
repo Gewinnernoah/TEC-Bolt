@@ -5,20 +5,12 @@ import type { SystemSetting } from './types';
 const cache = new Map<string, unknown>();
 const listeners = new Map<string, Set<(v: unknown) => void>>();
 
-// HIER DB-Check hinzugefügt
-const isSqlite = import.meta.env.VITE_DB_MODE === 'sqlite';
-
 export function getSetting<T>(key: string, fallback: T): T {
   if (cache.has(key)) return cache.get(key) as T;
   return fallback;
 }
 
 export async function loadSettings(): Promise<void> {
-  if (isSqlite) {
-    // Optional: Einstellungen aus localStorage laden für Offline-Modus
-    return;
-  }
-
   const { data, error } = await supabase.from('system_settings').select('*');
   if (error || !data) return;
   for (const row of data as SystemSetting[]) {
@@ -28,11 +20,8 @@ export async function loadSettings(): Promise<void> {
 }
 
 export async function updateSetting(key: string, value: unknown): Promise<{ error: string | null }> {
-  if (!isSqlite) {
-    const { error } = await supabase.from('system_settings').upsert({ key, value });
-    if (error) return { error: error.message };
-  }
-
+  const { error } = await supabase.from('system_settings').upsert({ key, value });
+  if (error) return { error: error.message };
   cache.set(key, value);
   listeners.get(key)?.forEach((fn) => fn(value));
   return { error: null };

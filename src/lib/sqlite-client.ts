@@ -573,10 +573,12 @@ async function createSqliteAuth(db: Database, persist: () => Promise<void>) {
     listeners.push(callback);
     getSession().then(({ data }: any) => callback('INITIAL_SESSION', data.session));
     return {
-      subscription: {
-        unsubscribe: () => {
-          const idx = listeners.indexOf(callback);
-          if (idx >= 0) listeners.splice(idx, 1);
+      data: {
+        subscription: {
+          unsubscribe: () => {
+            const idx = listeners.indexOf(callback);
+            if (idx >= 0) listeners.splice(idx, 1);
+          },
         },
       },
     };
