@@ -6,6 +6,7 @@ import { ToastProvider } from '@/components/Toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppShell } from '@/components/AppShell';
 import { LoginPage } from '@/pages/LoginPage';
+import { LandingPage } from '@/pages/LandingPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { LendingPage } from '@/pages/LendingPage';
@@ -20,21 +21,38 @@ import { AdminUsersPage } from '@/pages/AdminUsersPage';
 import { AdminSettingsPage } from '@/pages/AdminSettingsPage';
 import { AdminLogsPage } from '@/pages/AdminLogsPage';
 import { TecRoomPage } from '@/pages/TecRoomPage';
+import { getRoute, onRouteChange, navigateTo, type Route } from '@/lib/router';
 
 function AppContent() {
   const { session, profile, loading, locked } = useAuth();
   const [page, setPage] = useState('dashboard');
+  const [route, setRoute] = useState<Route>(getRoute());
+
+  useEffect(() => {
+    const unsub = onRouteChange((r) => setRoute(r));
+    return unsub;
+  }, []);
 
   useEffect(() => {
     loadSettings();
   }, []);
+
+  // Landing-Page: nur anzeigen wenn nicht eingeloggt und Route = landing
+  if (route === 'landing' && !session && !loading) {
+    return <LandingPage />;
+  }
+
+  // Login-Route: Login-Seite anzeigen
+  if (route === 'login' && !session && !loading && !locked) {
+    return <LoginPage />;
+  }
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0e1a]">
         <div className="text-center">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-slate-700 border-t-blue-500" />
-          <p className="mt-3 text-sm text-slate-400">Loading...</p>
+          <p className="mt-3 text-sm text-slate-400">Wird geladen...</p>
         </div>
       </div>
     );
@@ -48,7 +66,7 @@ function AppContent() {
     return <LoginPage />;
   }
 
-  // TEC room is a fullscreen display — renders outside the AppShell
+  // Eingeloggt: Dashboard und Unterseiten
   if (page === 'tec-room') {
     return <TecRoomPage onExit={() => setPage('dashboard')} />;
   }
@@ -72,25 +90,25 @@ function AppContent() {
     }
   };
 
-  // Guard admin pages
+  // Admin-Seiten schuetzen
   if ((page === 'admin-users' || page === 'admin-settings' || page === 'admin-logs') && profile.role !== 'admin') {
     return (
       <AppShell current="dashboard" onNavigate={setPage}>
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <h2 className="text-lg font-semibold text-slate-200">Access Denied</h2>
-          <p className="mt-1 text-sm text-slate-400">You need administrator privileges to access this page.</p>
+          <h2 className="text-lg font-semibold text-slate-200">Zugriff verweigert</h2>
+          <p className="mt-1 text-sm text-slate-400">Sie benoetigen Administratorrechte, um auf diese Seite zuzugreifen.</p>
         </div>
       </AppShell>
     );
   }
 
-  // Guard staff-only pages
+  // Personal-Seiten schuetzen
   if ((page === 'inventory' || page === 'analytics') && profile.role === 'teacher') {
     return (
       <AppShell current="dashboard" onNavigate={setPage}>
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <h2 className="text-lg font-semibold text-slate-200">Access Denied</h2>
-          <p className="mt-1 text-sm text-slate-400">You need staff privileges to access this page.</p>
+          <h2 className="text-lg font-semibold text-slate-200">Zugriff verweigert</h2>
+          <p className="mt-1 text-sm text-slate-400">Sie benoetigen Personalrechte, um auf diese Seite zuzugreifen.</p>
         </div>
       </AppShell>
     );
@@ -111,8 +129,8 @@ export default function App() {
     dbReady
       .then(() => setDbLoading(false))
       .catch((e: Error) => {
-        console.error('[App] Database initialization failed:', e);
-        setDbError(e.message || 'Unknown database error');
+        console.error('[App] Datenbank-Initialisierung fehlgeschlagen:', e);
+        setDbError(e.message || 'Unbekannter Datenbankfehler');
         setDbLoading(false);
       });
   }, []);
@@ -134,7 +152,7 @@ export default function App() {
         <div className="max-w-lg rounded-xl border border-red-900/50 bg-red-950/20 p-8 text-center">
           <h2 className="text-xl font-bold text-red-400">Datenbankfehler</h2>
           <p className="mt-2 text-sm text-slate-400">
-            Die Datenbank konnte nicht initialisiert werden. Bitte Seite neu laden.
+            Die Datenbank konnte nicht initialisiert werden. Bitte pruefen Sie die Konfiguration und laden Sie die Seite neu.
           </p>
           <pre className="mt-4 max-h-40 overflow-auto rounded-lg bg-black/40 p-3 text-left text-xs text-red-300">
             {dbError}

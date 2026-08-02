@@ -65,9 +65,9 @@ export function InventoryPage() {
     if (found) {
       setSelected(found);
       setShowStorage(found);
-      toast(`Found: ${found.name}`, 'success');
+      toast(`Gefunden: ${found.name}`, 'success');
     } else {
-      toast('No device found with that code', 'error');
+      toast('Kein Geraet mit diesem Code gefunden', 'error');
     }
     setScanInput('');
     setScanMode(false);
@@ -78,34 +78,34 @@ export function InventoryPage() {
     const { error } = await supabase.from('devices').delete().eq('id', selected.id);
     if (error) { toast(error.message, 'error'); return; }
     await logActivity('device.delete', 'device', selected.id, { name: selected.name });
-    toast('Device deleted', 'success');
+    toast('Geraet geloescht', 'success');
     setSelected(null);
     refresh();
   };
 
-  if (loading) return <LoadingScreen message="Loading inventory..." />;
+  if (loading) return <LoadingScreen message="Inventar wird geladen..." />;
 
   const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'devices', label: 'Devices', icon: Package },
-    { id: 'storage', label: 'Storage Map', icon: MapPin },
-    { id: 'audits', label: 'Audits', icon: ClipboardCheck },
-    { id: 'consumables', label: 'Consumables', icon: Boxes },
-    { id: 'damage', label: 'Damage Reports', icon: AlertTriangle },
-    { id: 'repairs', label: 'Repairs', icon: Wrench },
+    { id: 'devices', label: 'Geraete', icon: Package },
+    { id: 'storage', label: 'Lagerkarte', icon: MapPin },
+    { id: 'audits', label: 'Pruefungen', icon: ClipboardCheck },
+    { id: 'consumables', label: 'Verbrauchsmaterialien', icon: Boxes },
+    { id: 'damage', label: 'Schaedenberichte', icon: AlertTriangle },
+    { id: 'repairs', label: 'Reparaturen', icon: Wrench },
   ];
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Inventory Management"
-        subtitle={`${(devices ?? []).length} devices registered`}
+        title="Inventarverwaltung"
+        subtitle={`${(devices ?? []).length} Geraete registriert`}
         actions={
           <>
             <button onClick={() => setScanMode(!scanMode)} className={cn('btn-secondary', scanMode && 'bg-blue-600 text-white')}>
-              <ScanLine className="h-4 w-4" /> Scan
+              <ScanLine className="h-4 w-4" /> Scannen
             </button>
             <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary">
-              <Plus className="h-4 w-4" /> Add Device
+              <Plus className="h-4 w-4" /> Geraet hinzufuegen
             </button>
           </>
         }
@@ -119,10 +119,10 @@ export function InventoryPage() {
             value={scanInput}
             onChange={(e) => setScanInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleScan()}
-            placeholder="Scan or enter barcode / NFC tag / inventory number..."
+            placeholder="Barcode / NFC-Tag / Inventarnummer scannen oder eingeben..."
             className="input flex-1"
           />
-          <button onClick={handleScan} className="btn-primary">Find</button>
+          <button onClick={handleScan} className="btn-primary">Suchen</button>
         </div>
       )}
 
@@ -144,16 +144,16 @@ export function InventoryPage() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, inventory #, barcode, NFC, serial..." className="input pl-10" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nach Name, Inventar-Nr., Barcode, NFC, Seriennummer suchen..." className="input pl-10" />
             </div>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="select w-auto">
-              <option value="all">All Status</option>
+              <option value="all">Alle Status</option>
               {(Object.keys(DEVICE_STATUS_META) as DeviceStatus[]).map((s) => (
                 <option key={s} value={s}>{DEVICE_STATUS_META[s].label}</option>
               ))}
             </select>
             <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="select w-auto">
-              <option value="all">All Categories</option>
+              <option value="all">Alle Kategorien</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
@@ -163,24 +163,24 @@ export function InventoryPage() {
               <table className="w-full">
                 <thead className="bg-slate-900/50">
                   <tr>
-                    <th className="table-header">Device</th>
-                    <th className="table-header">Inv. Number</th>
+                    <th className="table-header">Geraet</th>
+                    <th className="table-header">Inv.-Nr.</th>
                     <th className="table-header">Status</th>
                     <th className="table-header">Tracking</th>
-                    <th className="table-header">Location</th>
-                    <th className="table-header">Value</th>
-                    <th className="table-header">Actions</th>
+                    <th className="table-header">Standort</th>
+                    <th className="table-header">Wert</th>
+                    <th className="table-header">Aktionen</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={7}><EmptyState icon={Package} title="No devices found" message="Add a device or adjust your filters" /></td></tr>
+                    <tr><td colSpan={7}><EmptyState icon={Package} title="Keine Geraete gefunden" message="Geraet hinzufuegen oder Filter anpassen" /></td></tr>
                   ) : (
                     filtered.map((device) => (
                       <tr key={device.id} className="hover:bg-slate-800/30 cursor-pointer" onClick={() => setSelected(device)}>
                         <td className="table-cell">
                           <div className="font-medium text-slate-200">{device.name}</div>
-                          <div className="text-xs text-slate-500">{device.category?.name ?? 'Uncategorized'} · {device.manufacturer ?? '—'}</div>
+                          <div className="text-xs text-slate-500">{device.category?.name ?? 'Ohne Kategorie'} · {device.manufacturer ?? '—'}</div>
                         </td>
                         <td className="table-cell font-mono text-xs">{device.inventory_number}</td>
                         <td className="table-cell">
@@ -193,16 +193,16 @@ export function InventoryPage() {
                           <div className="flex items-center gap-1.5">
                             {device.tracking_method === 'nfc' ? <Tag className="h-3.5 w-3.5 text-cyan-400" /> : <QrCode className="h-3.5 w-3.5 text-blue-400" />}
                             <span className="text-xs">{device.tracking_method.toUpperCase()}</span>
-                            {device.is_high_value && <span className="badge bg-amber-500/15 border-amber-500/30 text-amber-300 text-[10px]">High Value</span>}
+                            {device.is_high_value && <span className="badge bg-amber-500/15 border-amber-500/30 text-amber-300 text-[10px]">Hoher Wert</span>}
                           </div>
                         </td>
                         <td className="table-cell text-xs text-slate-400">{device.room?.name ?? '—'}</td>
                         <td className="table-cell">{device.value > 0 ? formatCurrency(device.value) : '—'}</td>
                         <td className="table-cell">
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            <button onClick={() => setShowLabel(device)} className="btn-icon" title="Print label"><Printer className="h-4 w-4" /></button>
-                            <button onClick={() => { setEditing(device); setShowForm(true); }} className="btn-icon" title="Edit"><Edit className="h-4 w-4" /></button>
-                            {profile?.role === 'admin' && <button onClick={() => { setSelected(device); deleteModal.openModal(); }} className="btn-icon text-red-400" title="Delete"><Trash2 className="h-4 w-4" /></button>}
+                            <button onClick={() => setShowLabel(device)} className="btn-icon" title="Etikett drucken"><Printer className="h-4 w-4" /></button>
+                            <button onClick={() => { setEditing(device); setShowForm(true); }} className="btn-icon" title="Bearbeiten"><Edit className="h-4 w-4" /></button>
+                            {profile?.role === 'admin' && <button onClick={() => { setSelected(device); deleteModal.openModal(); }} className="btn-icon text-red-400" title="Loeschen"><Trash2 className="h-4 w-4" /></button>}
                           </div>
                         </td>
                       </tr>
@@ -254,9 +254,9 @@ export function InventoryPage() {
         open={deleteModal.open}
         onClose={deleteModal.closeModal}
         onConfirm={handleDelete}
-        title="Delete Device"
-        message={`Are you sure you want to delete "${selected?.name}"? This cannot be undone.`}
-        confirmLabel="Delete"
+        title="Geraet loeschen"
+        message={`Moechten Sie "${selected?.name}" wirklich loeschen? Dies kann nicht rueckgaengig gemacht werden.`}
+        confirmLabel="Loeschen"
         danger
       />
     </div>
@@ -292,13 +292,13 @@ function StorageMapTab({ devices, rooms, onSelectDevice }: { devices: Device[]; 
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <select value={selectedRoom} onChange={(e) => setSelectedRoom(e.target.value)} className="select w-auto">
-          <option value="all">All Rooms</option>
+          <option value="all">Alle Raeume</option>
           {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number})</option>)}
         </select>
         {selectedCabinet && (
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <ChevronRight className="h-4 w-4" />
-            <span>Cabinet {selectedCabinet.code}</span>
+            <span>Schrank {selectedCabinet.code}</span>
             <span className="badge bg-blue-500/15 border-blue-500/30 text-blue-300">{selectedCabinet.rows}×{selectedCabinet.columns}</span>
           </div>
         )}
@@ -306,9 +306,9 @@ function StorageMapTab({ devices, rooms, onSelectDevice }: { devices: Device[]; 
 
       <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
         <div className="card p-4">
-          <h3 className="mb-3 text-sm font-semibold text-slate-200">Cabinets</h3>
-          {loading ? <LoadingScreen message="Loading cabinets..." /> : cabinets.length === 0 ? (
-            <EmptyState icon={MapPin} title="No cabinets" message="Add cabinets in room settings" />
+          <h3 className="mb-3 text-sm font-semibold text-slate-200">Schraenke</h3>
+          {loading ? <LoadingScreen message="Schraenke werden geladen..." /> : cabinets.length === 0 ? (
+            <EmptyState icon={MapPin} title="Keine Schraenke" message="Schraenke in den Raumeinstellungen hinzufuegen" />
           ) : (
             <div className="space-y-2">
               {cabinets.map((c) => {
@@ -322,7 +322,7 @@ function StorageMapTab({ devices, rooms, onSelectDevice }: { devices: Device[]; 
                   >
                     <div>
                       <div className="text-sm font-medium text-slate-200">{c.label}</div>
-                      <div className="text-xs text-slate-500">{c.room?.name ?? 'No room'}</div>
+                      <div className="text-xs text-slate-500">{c.room?.name ?? 'Kein Raum'}</div>
                     </div>
                     <span className="badge bg-slate-700/50 text-slate-300 border-slate-700">{count}</span>
                   </button>
@@ -335,7 +335,7 @@ function StorageMapTab({ devices, rooms, onSelectDevice }: { devices: Device[]; 
         <div className="card p-4">
           {selectedCabinet ? (
             <div>
-              <h3 className="mb-4 text-sm font-semibold text-slate-200">Shelf Layout — {selectedCabinet.label}</h3>
+              <h3 className="mb-4 text-sm font-semibold text-slate-200">Regal-Layout — {selectedCabinet.label}</h3>
               <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${selectedCabinet.columns}, minmax(0, 1fr))` }}>
                 {Array.from({ length: selectedCabinet.rows * selectedCabinet.columns }).map((_, i) => {
                   const row = Math.floor(i / selectedCabinet.columns);
@@ -367,7 +367,7 @@ function StorageMapTab({ devices, rooms, onSelectDevice }: { devices: Device[]; 
               </div>
             </div>
           ) : (
-            <EmptyState icon={MapPin} title="Select a cabinet" message="Choose a cabinet to view its shelf layout" />
+            <EmptyState icon={MapPin} title="Schrank auswaehlen" message="Waehlen Sie einen Schrank, um das Regal-Layout zu sehen" />
           )}
         </div>
       </div>
@@ -412,12 +412,12 @@ function AuditsTab({ devices }: { devices: Device[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-200">Inventory Audits</h3>
-        <button onClick={() => setShowNew(true)} className="btn-primary"><Plus className="h-4 w-4" /> New Audit</button>
+        <h3 className="text-sm font-semibold text-slate-200">Inventarpruefungen</h3>
+        <button onClick={() => setShowNew(true)} className="btn-primary"><Plus className="h-4 w-4" /> Neue Pruefung</button>
       </div>
 
-      {loading ? <LoadingScreen message="Loading audits..." /> : audits.length === 0 ? (
-        <div className="card"><EmptyState icon={ClipboardCheck} title="No audits yet" message="Start an audit to compare expected vs actual inventory" /></div>
+      {loading ? <LoadingScreen message="Pruefungen werden geladen..." /> : audits.length === 0 ? (
+        <div className="card"><EmptyState icon={ClipboardCheck} title="Noch keine Pruefungen" message="Pruefung starten, um Soll- mit Ist-Bestand zu vergleichen" /></div>
       ) : (
         <div className="space-y-3">
           {audits.map((audit) => (
@@ -425,20 +425,20 @@ function AuditsTab({ devices }: { devices: Device[] }) {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-slate-200">{audit.name}</div>
-                  <div className="text-xs text-slate-500">Started {formatDate(audit.started_at)} · {audit.expected_count} expected</div>
+                  <div className="text-xs text-slate-500">Gestartet {formatDate(audit.started_at)} · {audit.expected_count} erwartet</div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <div className="text-xs text-slate-400">Found: {audit.actual_count}/{audit.expected_count}</div>
-                    <div className="text-xs text-red-400">Missing: {audit.missing_count}</div>
+                    <div className="text-xs text-slate-400">Gefunden: {audit.actual_count}/{audit.expected_count}</div>
+                    <div className="text-xs text-red-400">Fehlend: {audit.missing_count}</div>
                   </div>
-                  {audit.status === 'in_progress' && <button onClick={() => setActiveAudit(audit)} className="btn-secondary">Continue</button>}
-                  {audit.status === 'completed' && <button onClick={() => setActiveAudit(audit)} className="btn-ghost"><Eye className="h-4 w-4" /> View</button>}
+                  {audit.status === 'in_progress' && <button onClick={() => setActiveAudit(audit)} className="btn-secondary">Fortsetzen</button>}
+                  {audit.status === 'completed' && <button onClick={() => setActiveAudit(audit)} className="btn-ghost"><Eye className="h-4 w-4" /> Ansehen</button>}
                 </div>
               </div>
               {audit.risk_level !== 'none' && audit.status === 'completed' && (
                 <div className={cn('mt-3 rounded-lg px-3 py-2 text-xs', audit.risk_level === 'high' ? 'bg-red-500/15' : audit.risk_level === 'medium' ? 'bg-amber-500/15' : 'bg-blue-500/15')}>
-                  <strong>Risk: {audit.risk_level.toUpperCase()}</strong> — {audit.risk_notes ?? 'See audit items for details'}
+                  <strong>Risiko: {audit.risk_level.toUpperCase()}</strong> — {audit.risk_notes ?? 'Details in den Pruefungspunkten'}
                 </div>
               )}
             </div>
@@ -447,9 +447,9 @@ function AuditsTab({ devices }: { devices: Device[] }) {
       )}
 
       {showNew && (
-        <Modal open onClose={() => setShowNew(false)} title="Start New Audit" size="sm"
-          footer={<><button className="btn-secondary" onClick={() => setShowNew(false)}>Cancel</button><button className="btn-primary" onClick={() => startAudit(`Audit ${formatDate(new Date())}`)}>Start</button></>}>
-          <p className="text-sm text-slate-300">This will create a new audit session comparing {devices.length} expected devices against scanned inventory. You can scan devices to mark them as present.</p>
+        <Modal open onClose={() => setShowNew(false)} title="Neue Pruefung starten" size="sm"
+          footer={<><button className="btn-secondary" onClick={() => setShowNew(false)}>Abbrechen</button><button className="btn-primary" onClick={() => startAudit(`Pruefung ${formatDate(new Date())}`)}>Starten</button></>}>
+          <p className="text-sm text-slate-300">Dies erstellt eine neue Pruefungssession, die {devices.length} erwartete Geraete mit dem gescannten Inventar vergleicht. Sie koennen Geraete scannen, um sie als vorhanden zu markieren.</p>
         </Modal>
       )}
     </div>
@@ -465,8 +465,8 @@ function AuditRunner({ audit, devices, onExit }: { audit: InventoryAudit; device
   const handleScan = async () => {
     if (!scanInput.trim()) return;
     const device = devices.find((d) => d.barcode === scanInput || d.nfc_tag_id === scanInput || d.inventory_number === scanInput || d.qr_code === scanInput);
-    if (!device) { toast('Device not found in inventory', 'error'); setScanInput(''); return; }
-    if (scanned.includes(device.id)) { toast('Already scanned', 'info'); setScanInput(''); return; }
+    if (!device) { toast('Geraet nicht im Inventar gefunden', 'error'); setScanInput(''); return; }
+    if (scanned.includes(device.id)) { toast('Bereits gescannt', 'info'); setScanInput(''); return; }
 
     const { data: profile } = await supabase.auth.getUser();
     await supabase.from('inventory_audit_items').insert({
@@ -481,7 +481,7 @@ function AuditRunner({ audit, devices, onExit }: { audit: InventoryAudit; device
     });
     setScanned([...scanned, device.id]);
     setItems([...items, { id: crypto.randomUUID(), audit_id: audit.id, device_id: device.id, inventory_number: device.inventory_number, expected_status: device.status, actual_status: device.status, item_status: 'present', scanned_at: new Date().toISOString(), scanned_by: null, notes: null, created_at: new Date().toISOString(), device }]);
-    toast(`${device.name} marked present`, 'success');
+    toast(`${device.name} als vorhanden markiert`, 'success');
     setScanInput('');
   };
 
@@ -490,14 +490,14 @@ function AuditRunner({ audit, devices, onExit }: { audit: InventoryAudit; device
     const highValueMissing = missing.filter((d) => d.is_high_value);
     const risk = highValueMissing.length > 0 ? 'high' : missing.length > 5 ? 'medium' : missing.length > 0 ? 'low' : 'none';
     const riskNotes = highValueMissing.length > 0
-      ? `${highValueMissing.length} high-value devices missing!`
-      : missing.length > 0 ? `${missing.length} devices not found during scan` : 'All devices accounted for';
+      ? `${highValueMissing.length} Geraete mit hohem Wert fehlen!`
+      : missing.length > 0 ? `${missing.length} Geraete beim Scan nicht gefunden` : 'Alle Geraete erfasst';
 
     for (const d of missing) {
       const { data: profile } = await supabase.auth.getUser();
       await supabase.from('inventory_audit_items').insert({
         audit_id: audit.id, device_id: d.id, inventory_number: d.inventory_number,
-        expected_status: d.status, item_status: 'missing', notes: d.is_high_value ? 'HIGH VALUE' : null,
+        expected_status: d.status, item_status: 'missing', notes: d.is_high_value ? 'HOHER WERT' : null,
         scanned_by: profile.user?.id,
       });
     }
@@ -509,12 +509,12 @@ function AuditRunner({ audit, devices, onExit }: { audit: InventoryAudit; device
 
     if (error) { toast(error.message, 'error'); return; }
     await logActivity('audit.complete', 'audit', audit.id, { missing: missing.length, risk });
-    toast('Audit completed', 'success');
+    toast('Pruefung abgeschlossen', 'success');
     onExit();
   };
 
   const missing = devices.filter((d) => !scanned.includes(d.id));
-  const report = `INVENTORY AUDIT REPORT\n========================\n\nAudit: ${audit.name}\nDate: ${formatDate(audit.started_at)}\n\nExpected: ${devices.length}\nFound: ${scanned.length}\nMissing: ${missing.length}\nRisk: ${audit.risk_level}\n\n--- Missing Devices ---\n${missing.map((d) => `${d.inventory_number} | ${d.name} | ${d.is_high_value ? 'HIGH VALUE' : 'normal'} | ${formatCurrency(d.value)}`).join('\n')}\n`;
+  const report = `INVENTARPRUEFUNGSBERICHT\n========================\n\nPruefung: ${audit.name}\nDatum: ${formatDate(audit.started_at)}\n\nErwartet: ${devices.length}\nGefunden: ${scanned.length}\nFehlend: ${missing.length}\nRisiko: ${audit.risk_level}\n\n--- Fehlende Geraete ---\n${missing.map((d) => `${d.inventory_number} | ${d.name} | ${d.is_high_value ? 'HOHER WERT' : 'normal'} | ${formatCurrency(d.value)}`).join('\n')}\n`;
 
   return (
     <div className="space-y-4">
@@ -522,12 +522,12 @@ function AuditRunner({ audit, devices, onExit }: { audit: InventoryAudit; device
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-slate-200">{audit.name}</h3>
-            <div className="text-xs text-slate-400">Scanned {scanned.length} of {devices.length} · {missing.length} missing</div>
+            <div className="text-xs text-slate-400">Gescannt: {scanned.length} von {devices.length} · {missing.length} fehlend</div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => downloadFile(report, `audit-${audit.id}.txt`)} className="btn-secondary"><Download className="h-4 w-4" /> Report</button>
-            <button onClick={completeAudit} className="btn-primary">Complete Audit</button>
-            <button onClick={onExit} className="btn-ghost">Exit</button>
+            <button onClick={() => downloadFile(report, `audit-${audit.id}.txt`)} className="btn-secondary"><Download className="h-4 w-4" /> Bericht</button>
+            <button onClick={completeAudit} className="btn-primary">Pruefung abschliessen</button>
+            <button onClick={onExit} className="btn-ghost">Beenden</button>
           </div>
         </div>
         <div className="mt-3 h-2 rounded-full bg-slate-800 overflow-hidden">
@@ -537,13 +537,13 @@ function AuditRunner({ audit, devices, onExit }: { audit: InventoryAudit; device
 
       <div className="card flex items-center gap-3 p-4">
         <ScanLine className="h-5 w-5 text-blue-400 animate-pulse" />
-        <input autoFocus value={scanInput} onChange={(e) => setScanInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleScan()} placeholder="Scan device to mark present..." className="input flex-1" />
-        <button onClick={handleScan} className="btn-primary">Scan</button>
+        <input autoFocus value={scanInput} onChange={(e) => setScanInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleScan()} placeholder="Geraet scannen, um als vorhanden zu markieren..." className="input flex-1" />
+        <button onClick={handleScan} className="btn-primary">Scannen</button>
       </div>
 
       {missing.length > 0 && (
         <div className="card">
-          <div className="border-b border-slate-800 px-4 py-2 text-sm font-semibold text-red-300">Missing Devices ({missing.length})</div>
+          <div className="border-b border-slate-800 px-4 py-2 text-sm font-semibold text-red-300">Fehlende Geraete ({missing.length})</div>
           <div className="scrollbar-thin max-h-60 overflow-y-auto">
             {missing.map((d) => (
               <div key={d.id} className="flex items-center justify-between px-4 py-2 border-b border-slate-800/50">
@@ -552,7 +552,7 @@ function AuditRunner({ audit, devices, onExit }: { audit: InventoryAudit; device
                   <span className="ml-2 text-xs text-slate-500 font-mono">{d.inventory_number}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {d.is_high_value && <span className="badge bg-amber-500/15 border-amber-500/30 text-amber-300 text-[10px]">High Value</span>}
+                  {d.is_high_value && <span className="badge bg-amber-500/15 border-amber-500/30 text-amber-300 text-[10px]">Hoher Wert</span>}
                   <span className="text-xs text-slate-400">{formatCurrency(d.value)}</span>
                 </div>
               </div>
@@ -585,11 +585,11 @@ function ConsumablesTab() {
     if (editing) {
       const { error } = await supabase.from('consumables').update(data).eq('id', editing.id);
       if (error) { toast(error.message, 'error'); return; }
-      toast('Consumable updated', 'success');
+      toast('Verbrauchsmaterial aktualisiert', 'success');
     } else {
       const { error } = await supabase.from('consumables').insert(data);
       if (error) { toast(error.message, 'error'); return; }
-      toast('Consumable added', 'success');
+      toast('Verbrauchsmaterial hinzugefuegt', 'success');
     }
     setShowForm(false); setEditing(null); load();
   };
@@ -598,13 +598,13 @@ function ConsumablesTab() {
     filament: Cpu, battery: Battery, tape: CassetteTape, adapter: Cable, other: Package,
   };
 
-  if (loading) return <LoadingScreen message="Loading consumables..." />;
+  if (loading) return <LoadingScreen message="Verbrauchsmaterialien werden geladen..." />;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-200">Consumables & Supplies</h3>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary"><Plus className="h-4 w-4" /> Add Consumable</button>
+        <h3 className="text-sm font-semibold text-slate-200">Verbrauchsmaterialien & Zubehoer</h3>
+        <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary"><Plus className="h-4 w-4" /> Verbrauchsmaterial hinzufuegen</button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -635,10 +635,10 @@ function ConsumablesTab() {
                 </div>
                 <div className="mt-1.5 flex items-center justify-between text-xs">
                   <span className="text-slate-500">Min: {c.min_stock}</span>
-                  {low ? <span className="text-amber-400 font-medium">Low stock!</span> : <span className="text-emerald-400">OK</span>}
+                  {low ? <span className="text-amber-400 font-medium">Niedriger Bestand!</span> : <span className="text-emerald-400">OK</span>}
                 </div>
                 {low && c.reorder_link && (
-                  <a href={c.reorder_link} target="_blank" rel="noreferrer" className="btn-secondary mt-3 w-full text-xs">Reorder now</a>
+                  <a href={c.reorder_link} target="_blank" rel="noreferrer" className="btn-secondary mt-3 w-full text-xs">Jetzt nachbestellen</a>
                 )}
               </div>
             </div>
@@ -646,7 +646,7 @@ function ConsumablesTab() {
         })}
       </div>
 
-      {consumables.length === 0 && <div className="card"><EmptyState icon={Boxes} title="No consumables" message="Add filament, batteries, tape, adapters and more" /></div>}
+      {consumables.length === 0 && <div className="card"><EmptyState icon={Boxes} title="Keine Verbrauchsmaterialien" message="Filament, Batterien, Klebeband, Adapter und mehr hinzufuegen" /></div>}
 
       {showForm && <ConsumableFormModal consumable={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSave={save} />}
     </div>
@@ -663,25 +663,25 @@ function ConsumableFormModal({ consumable, onClose, onSave }: { consumable: Cons
   const [reorderLink, setReorderLink] = useState(consumable?.reorder_link ?? '');
 
   return (
-    <Modal open onClose={onClose} title={consumable ? 'Edit Consumable' : 'Add Consumable'} size="md"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={() => onSave({ name, type, unit, current_stock: currentStock, min_stock: minStock, reorder_qty: reorderQty, reorder_link: reorderLink })}>Save</button></>}>
+    <Modal open onClose={onClose} title={consumable ? 'Verbrauchsmaterial bearbeiten' : 'Verbrauchsmaterial hinzufuegen'} size="md"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={() => onSave({ name, type, unit, current_stock: currentStock, min_stock: minStock, reorder_qty: reorderQty, reorder_link: reorderLink })}>Speichern</button></>}>
       <div className="space-y-4">
-        <div><label className="label">Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. PLA Filament Black" /></div>
+        <div><label className="label">Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="z.B. PLA Filament Schwarz" /></div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="label">Type</label>
+          <div><label className="label">Typ</label>
             <select className="select" value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="filament">Filament</option><option value="battery">Battery</option>
-              <option value="tape">Gaffa Tape</option><option value="adapter">Adapter</option><option value="other">Other</option>
+              <option value="filament">Filament</option><option value="battery">Batterie</option>
+              <option value="tape">Gaffa-Klebeband</option><option value="adapter">Adapter</option><option value="other">Sonstige</option>
             </select>
           </div>
-          <div><label className="label">Unit</label><input className="input" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="pcs, kg, m" /></div>
+          <div><label className="label">Einheit</label><input className="input" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Stk, kg, m" /></div>
         </div>
         <div className="grid grid-cols-3 gap-4">
-          <div><label className="label">Current Stock</label><input type="number" className="input" value={currentStock} onChange={(e) => setCurrentStock(Number(e.target.value))} /></div>
-          <div><label className="label">Min Stock</label><input type="number" className="input" value={minStock} onChange={(e) => setMinStock(Number(e.target.value))} /></div>
-          <div><label className="label">Reorder Qty</label><input type="number" className="input" value={reorderQty} onChange={(e) => setReorderQty(Number(e.target.value))} /></div>
+          <div><label className="label">Aktueller Bestand</label><input type="number" className="input" value={currentStock} onChange={(e) => setCurrentStock(Number(e.target.value))} /></div>
+          <div><label className="label">Mindestbestand</label><input type="number" className="input" value={minStock} onChange={(e) => setMinStock(Number(e.target.value))} /></div>
+          <div><label className="label">Nachbestellmenge</label><input type="number" className="input" value={reorderQty} onChange={(e) => setReorderQty(Number(e.target.value))} /></div>
         </div>
-        <div><label className="label">Reorder Link</label><input className="input" value={reorderLink} onChange={(e) => setReorderLink(e.target.value)} placeholder="https://..." /></div>
+        <div><label className="label">Nachbestell-Link</label><input className="input" value={reorderLink} onChange={(e) => setReorderLink(e.target.value)} placeholder="https://..." /></div>
       </div>
     </Modal>
   );
@@ -715,27 +715,27 @@ function DamageReportsTab({ devices }: { devices: Device[] }) {
     });
     if (error) { toast(error.message, 'error'); return; }
     await supabase.from('devices').update({ status: 'maintenance' }).eq('id', report.device_id);
-    toast('Repair intake created and device set to maintenance', 'success');
+    toast('Reparaturaufnahme erstellt und Geraet auf Wartung gesetzt', 'success');
     load();
   };
 
-  if (loading) return <LoadingScreen message="Loading damage reports..." />;
+  if (loading) return <LoadingScreen message="Schaedenberichte werden geladen..." />;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-200">Damage Reports</h3>
-        <button onClick={() => setShowForm(true)} className="btn-primary"><Plus className="h-4 w-4" /> Report Damage</button>
+        <h3 className="text-sm font-semibold text-slate-200">Schaedenberichte</h3>
+        <button onClick={() => setShowForm(true)} className="btn-primary"><Plus className="h-4 w-4" /> Schaden melden</button>
       </div>
 
-      {reports.length === 0 ? <div className="card"><EmptyState icon={AlertTriangle} title="No damage reports" /></div> : (
+      {reports.length === 0 ? <div className="card"><EmptyState icon={AlertTriangle} title="Keine Schaedenberichte" /></div> : (
         <div className="space-y-3">
           {reports.map((r) => (
             <div key={r.id} className="card p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-200">{r.device?.name ?? 'Unknown device'}</span>
+                    <span className="text-sm font-medium text-slate-200">{r.device?.name ?? 'Unbekanntes Geraet'}</span>
                     <span className="badge bg-slate-700/50 text-slate-300 border-slate-700 capitalize">{r.severity}</span>
                   </div>
                   <p className="mt-1 text-sm text-slate-400">{r.description}</p>
@@ -744,11 +744,11 @@ function DamageReportsTab({ devices }: { devices: Device[] }) {
                   </div>
                   {r.photos.length > 0 && (
                     <div className="mt-2 flex gap-2">
-                      {r.photos.slice(0, 4).map((url, i) => <img key={i} src={url} alt={`Damage ${i + 1}`} className="h-16 w-16 rounded-lg object-cover border border-slate-700" />)}
+                      {r.photos.slice(0, 4).map((url, i) => <img key={i} src={url} alt={`Schaden ${i + 1}`} className="h-16 w-16 rounded-lg object-cover border border-slate-700" />)}
                     </div>
                   )}
                 </div>
-                <button onClick={() => createRepair(r)} className="btn-secondary"><Wrench className="h-4 w-4" /> Create Repair</button>
+                <button onClick={() => createRepair(r)} className="btn-secondary"><Wrench className="h-4 w-4" /> Reparatur erstellen</button>
               </div>
             </div>
           ))}
@@ -779,7 +779,7 @@ function DamageFormModal({ devices, onClose, onSaved }: { devices: Device[]; onC
 
   const save = async () => {
     const device = devices.find((d) => d.id === deviceId);
-    if (!device || !description) { toast('Select device and describe the damage', 'error'); return; }
+    if (!device || !description) { toast('Geraet auswaehlen und Schaden beschreiben', 'error'); return; }
     const { data: profile } = await supabase.auth.getUser();
     const { error } = await supabase.from('damage_reports').insert({
       device_id: deviceId, reported_by: profile.user?.id, inventory_number: device.inventory_number,
@@ -787,30 +787,30 @@ function DamageFormModal({ devices, onClose, onSaved }: { devices: Device[]; onC
     });
     if (error) { toast(error.message, 'error'); return; }
     await logActivity('damage.report', 'device', deviceId, { description });
-    toast('Damage report filed', 'success');
+    toast('Schadenbericht eingereicht', 'success');
     onSaved();
   };
 
   return (
-    <Modal open onClose={onClose} title="Report Device Damage" size="md"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={save}>Submit Report</button></>}>
+    <Modal open onClose={onClose} title="Geraetschaden melden" size="md"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={save}>Bericht senden</button></>}>
       <div className="space-y-4">
-        <div><label className="label">Device</label>
+        <div><label className="label">Geraet</label>
           <select className="select" value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
-            <option value="">Select device...</option>
+            <option value="">Geraet auswaehlen...</option>
             {devices.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.inventory_number})</option>)}
           </select>
         </div>
-        <div><label className="label">Description</label><textarea className="input min-h-[80px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the damage..." /></div>
-        <div><label className="label">Severity</label>
+        <div><label className="label">Beschreibung</label><textarea className="input min-h-[80px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Schaden beschreiben..." /></div>
+        <div><label className="label">Schweregrad</label>
           <select className="select" value={severity} onChange={(e) => setSeverity(e.target.value)}>
-            <option value="minor">Minor</option><option value="moderate">Moderate</option><option value="severe">Severe</option>
+            <option value="minor">Gering</option><option value="moderate">Mittel</option><option value="severe">Schwer</option>
           </select>
         </div>
-        <div><label className="label">Photos (max 4)</label>
+        <div><label className="label">Fotos (max 4)</label>
           <div className="flex items-center gap-3">
             <label className="btn-secondary cursor-pointer">
-              <Camera className="h-4 w-4" /> Upload
+              <Camera className="h-4 w-4" /> Hochladen
               <input type="file" accept="image/*" multiple className="hidden" onChange={handlePhoto} />
             </label>
             {photos.map((p, i) => <img key={i} src={p} alt="" className="h-16 w-16 rounded-lg object-cover border border-slate-700" />)}
@@ -845,51 +845,51 @@ function RepairsTab() {
       const repair = repairs.find((r) => r.id === id);
       if (repair) await supabase.from('devices').update({ status: 'available', condition: 'good' }).eq('id', repair.device_id);
     }
-    toast('Repair status updated', 'success');
+    toast('Reparaturstatus aktualisiert', 'success');
     load();
   };
 
   const printIntake = (repair: RepairRecord) => {
     const html = `<html><head><style>body{font-family:Arial;margin:40px;color:#333}h1{font-size:18px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:8px;border:1px solid #ddd}.header{text-align:center;border-bottom:2px solid #333;padding-bottom:10px}</style></head><body>
-    <div class="header"><h1>Repair Intake Form</h1><p>School TEC Hub</p></div>
-    <table><tr><td><strong>Device</strong></td><td>${repair.device?.name ?? '—'}</td></tr>
-    <tr><td><strong>Inventory #</strong></td><td>${repair.device?.inventory_number ?? '—'}</td></tr>
-    <tr><td><strong>Serial #</strong></td><td>${repair.device?.serial_number ?? '—'}</td></tr>
-    <tr><td><strong>Issue</strong></td><td>${repair.issue_description}</td></tr>
-    <tr><td><strong>Date</strong></td><td>${formatDate(repair.created_at)}</td></tr>
+    <div class="header"><h1>Reparaturaufnahme-Formular</h1><p>School TEC Hub</p></div>
+    <table><tr><td><strong>Geraet</strong></td><td>${repair.device?.name ?? '—'}</td></tr>
+    <tr><td><strong>Inventar-Nr.</strong></td><td>${repair.device?.inventory_number ?? '—'}</td></tr>
+    <tr><td><strong>Serien-Nr.</strong></td><td>${repair.device?.serial_number ?? '—'}</td></tr>
+    <tr><td><strong>Problem</strong></td><td>${repair.issue_description}</td></tr>
+    <tr><td><strong>Datum</strong></td><td>${formatDate(repair.created_at)}</td></tr>
     <tr><td><strong>Status</strong></td><td>${repair.repair_status}</td></tr>
-    <tr><td><strong>Cost</strong></td><td>${formatCurrency(repair.cost)}</td></tr></table>
-    <p style="margin-top:30px">Signature: ______________________________</p>
+    <tr><td><strong>Kosten</strong></td><td>${formatCurrency(repair.cost)}</td></tr></table>
+    <p style="margin-top:30px">Unterschrift: ______________________________</p>
     </body></html>`;
     printHtml(html);
   };
 
-  if (loading) return <LoadingScreen message="Loading repairs..." />;
+  if (loading) return <LoadingScreen message="Reparaturen werden geladen..." />;
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-slate-200">Repair Records</h3>
-      {repairs.length === 0 ? <div className="card"><EmptyState icon={Wrench} title="No repair records" /></div> : (
+      <h3 className="text-sm font-semibold text-slate-200">Reparaturaufzeichnungen</h3>
+      {repairs.length === 0 ? <div className="card"><EmptyState icon={Wrench} title="Keine Reparaturaufzeichnungen" /></div> : (
         <div className="space-y-3">
           {repairs.map((r) => (
             <div key={r.id} className="card p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-200">{r.device?.name ?? 'Unknown'}</span>
+                    <span className="text-sm font-medium text-slate-200">{r.device?.name ?? 'Unbekannt'}</span>
                     <span className="badge bg-slate-700/50 text-slate-300 border-slate-700 capitalize">{r.repair_status}</span>
-                    {r.is_recurring && <span className="badge bg-amber-500/15 border-amber-500/30 text-amber-300">Recurring</span>}
+                    {r.is_recurring && <span className="badge bg-amber-500/15 border-amber-500/30 text-amber-300">Wiederkehrend</span>}
                   </div>
                   <p className="mt-1 text-sm text-slate-400">{r.issue_description}</p>
-                  <div className="mt-1.5 text-xs text-slate-500">{formatDate(r.created_at)} · Cost: {formatCurrency(r.cost)}</div>
-                  {r.resolution && <div className="mt-2 rounded-lg bg-emerald-950/30 px-3 py-1.5 text-xs text-emerald-300">Resolved: {r.resolution}</div>}
+                  <div className="mt-1.5 text-xs text-slate-500">{formatDate(r.created_at)} · Kosten: {formatCurrency(r.cost)}</div>
+                  {r.resolution && <div className="mt-2 rounded-lg bg-emerald-950/30 px-3 py-1.5 text-xs text-emerald-300">Geloest: {r.resolution}</div>}
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <button onClick={() => printIntake(r)} className="btn-ghost"><FileText className="h-4 w-4" /> Print Intake</button>
+                  <button onClick={() => printIntake(r)} className="btn-ghost"><FileText className="h-4 w-4" /> Aufnahme drucken</button>
                   {r.repair_status !== 'resolved' && (
                     <select className="select w-auto text-xs" value={r.repair_status} onChange={(e) => updateStatus(r.id, e.target.value)}>
-                      <option value="intake">Intake</option><option value="in_progress">In Progress</option>
-                      <option value="resolved">Resolved</option><option value="written_off">Written Off</option>
+                      <option value="intake">Aufnahme</option><option value="in_progress">In Bearbeitung</option>
+                      <option value="resolved">Geloest</option><option value="written_off">Abgeschrieben</option>
                     </select>
                   )}
                 </div>
@@ -927,44 +927,44 @@ function DeviceDetailModal({ device, onClose, onEdit, onPrintLabel, onViewStorag
 
   return (
     <Modal open onClose={onClose} title={device.name} size="lg"
-      footer={<><button className="btn-secondary" onClick={onViewStorage}><MapPin className="h-4 w-4" /> View Storage</button><button className="btn-secondary" onClick={onPrintLabel}><Printer className="h-4 w-4" /> Print Label</button><button className="btn-primary" onClick={onEdit}><Edit className="h-4 w-4" /> Edit</button></>}>
+      footer={<><button className="btn-secondary" onClick={onViewStorage}><MapPin className="h-4 w-4" /> Standort anzeigen</button><button className="btn-secondary" onClick={onPrintLabel}><Printer className="h-4 w-4" /> Etikett drucken</button><button className="btn-primary" onClick={onEdit}><Edit className="h-4 w-4" /> Bearbeiten</button></>}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <div className="card p-3"><div className="text-xs text-slate-500">Inventory Number</div><div className="font-mono text-sm text-slate-200">{device.inventory_number}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Inventarnummer</div><div className="font-mono text-sm text-slate-200">{device.inventory_number}</div></div>
           <div className="card p-3"><div className="text-xs text-slate-500">Status</div><span className={cn('badge', DEVICE_STATUS_META[device.status].bg, DEVICE_STATUS_META[device.status].color)}>{DEVICE_STATUS_META[device.status].label}</span></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Category</div><div className="text-sm text-slate-200">{device.category?.name ?? '—'}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Condition</div><div className={cn('text-sm', CONDITION_META[device.condition].color)}>{CONDITION_META[device.condition].label}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Manufacturer</div><div className="text-sm text-slate-200">{device.manufacturer ?? '—'}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Model</div><div className="text-sm text-slate-200">{device.model ?? '—'}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Serial Number</div><div className="text-sm text-slate-200">{device.serial_number ?? '—'}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Value</div><div className="text-sm text-slate-200">{device.value > 0 ? formatCurrency(device.value) : '—'}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Tracking Method</div><div className="text-sm text-slate-200">{device.tracking_method.toUpperCase()}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Room</div><div className="text-sm text-slate-200">{device.room?.name ?? '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Kategorie</div><div className="text-sm text-slate-200">{device.category?.name ?? '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Zustand</div><div className={cn('text-sm', CONDITION_META[device.condition].color)}>{CONDITION_META[device.condition].label}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Hersteller</div><div className="text-sm text-slate-200">{device.manufacturer ?? '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Modell</div><div className="text-sm text-slate-200">{device.model ?? '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Seriennummer</div><div className="text-sm text-slate-200">{device.serial_number ?? '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Wert</div><div className="text-sm text-slate-200">{device.value > 0 ? formatCurrency(device.value) : '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Tracking-Methode</div><div className="text-sm text-slate-200">{device.tracking_method.toUpperCase()}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Raum</div><div className="text-sm text-slate-200">{device.room?.name ?? '—'}</div></div>
           <div className="card p-3"><div className="text-xs text-slate-500">Barcode</div><div className="font-mono text-xs text-slate-200">{device.barcode ?? '—'}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">NFC Tag</div><div className="font-mono text-xs text-slate-200">{device.nfc_tag_id ?? '—'}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Purchase Date</div><div className="text-sm text-slate-200">{formatDate(device.purchase_date)}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Warranty Until</div><div className="text-sm text-slate-200">{formatDate(device.warranty_until)}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">NFC-Tag</div><div className="font-mono text-xs text-slate-200">{device.nfc_tag_id ?? '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Kaufdatum</div><div className="text-sm text-slate-200">{formatDate(device.purchase_date)}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Garantie bis</div><div className="text-sm text-slate-200">{formatDate(device.warranty_until)}</div></div>
         </div>
 
-        {device.notes && <div className="card p-3"><div className="text-xs text-slate-500">Notes</div><div className="text-sm text-slate-300">{device.notes}</div></div>}
+        {device.notes && <div className="card p-3"><div className="text-xs text-slate-500">Notizen</div><div className="text-sm text-slate-300">{device.notes}</div></div>}
 
         <div>
-          <h4 className="mb-2 text-sm font-semibold text-slate-200">Internal Notes</h4>
+          <h4 className="mb-2 text-sm font-semibold text-slate-200">Interne Notizen</h4>
           <div className="space-y-2">
             {notes.map((n) => (
               <div key={n.id} className="card p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-slate-300">{n.author?.full_name ?? 'Unknown'}</span>
+                  <span className="text-xs font-medium text-slate-300">{n.author?.full_name ?? 'Unbekannt'}</span>
                   <span className="text-[10px] text-slate-500">{formatDate(n.created_at)}</span>
                 </div>
                 <p className="mt-1 text-sm text-slate-400">{n.note}</p>
               </div>
             ))}
-            {notes.length === 0 && <p className="text-xs text-slate-500">No notes yet</p>}
+            {notes.length === 0 && <p className="text-xs text-slate-500">Noch keine Notizen</p>}
           </div>
           <div className="mt-2 flex gap-2">
-            <input className="input" value={newNote} onChange={(e) => setNewNote(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addNote()} placeholder="Add internal note..." />
-            <button onClick={addNote} className="btn-secondary">Add</button>
+            <input className="input" value={newNote} onChange={(e) => setNewNote(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addNote()} placeholder="Interne Notiz hinzufuegen..." />
+            <button onClick={addNote} className="btn-secondary">Hinzufuegen</button>
           </div>
         </div>
       </div>
@@ -986,7 +986,7 @@ function StorageViewModal({ device, onClose }: { device: Device; onClose: () => 
   const shelf = shelves.find((s) => s.id === device.shelf_id);
 
   return (
-    <Modal open onClose={onClose} title="Storage Location" size="md">
+    <Modal open onClose={onClose} title="Lagerort" size="md">
       <div className="space-y-4">
         <div className="card p-4 text-center">
           <Package className="mx-auto h-8 w-8 text-blue-400 mb-2" />
@@ -997,8 +997,8 @@ function StorageViewModal({ device, onClose }: { device: Device; onClose: () => 
         {cabinet ? (
           <div className="card p-4">
             <div className="mb-3 text-sm text-slate-300">
-              Located in <strong className="text-blue-400">{cabinet.label}</strong>
-              {shelf && <> at position <strong className="text-blue-400">Row {shelf.row_index + 1}, Column {shelf.col_index + 1}</strong></>}
+              Befindet sich in <strong className="text-blue-400">{cabinet.label}</strong>
+              {shelf && <> an Position <strong className="text-blue-400">Reihe {shelf.row_index + 1}, Spalte {shelf.col_index + 1}</strong></>}
             </div>
             <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cabinet.columns}, minmax(0, 1fr))` }}>
               {Array.from({ length: cabinet.rows * cabinet.columns }).map((_, i) => {
@@ -1014,7 +1014,7 @@ function StorageViewModal({ device, onClose }: { device: Device; onClose: () => 
             </div>
           </div>
         ) : (
-          <div className="card p-4 text-center text-sm text-slate-500">No storage location assigned. Edit the device to assign a cabinet and shelf.</div>
+          <div className="card p-4 text-center text-sm text-slate-500">Kein Lagerort zugewiesen. Bearbeiten Sie das Geraet, um Schrank und Regal zuzuweisen.</div>
         )}
       </div>
     </Modal>
@@ -1035,8 +1035,8 @@ function LabelPrintModal({ device, onClose }: { device: Device; onClose: () => v
   };
 
   return (
-    <Modal open onClose={onClose} title="Device Label" size="sm"
-      footer={<><button className="btn-secondary" onClick={onClose}>Close</button><button className="btn-primary" onClick={handlePrint}><Printer className="h-4 w-4" /> Print</button></>}>
+    <Modal open onClose={onClose} title="Geraet-Etikett" size="sm"
+      footer={<><button className="btn-secondary" onClick={onClose}>Schliessen</button><button className="btn-primary" onClick={handlePrint}><Printer className="h-4 w-4" /> Drucken</button></>}>
       <div className="space-y-4">
         <div className="card p-4 text-center">
           <div className="text-sm font-medium text-slate-200">{device.name}</div>
@@ -1044,8 +1044,8 @@ function LabelPrintModal({ device, onClose }: { device: Device; onClose: () => v
         </div>
         <div className="flex justify-center gap-4">
           <div className="text-center">
-            {qrUrl && <img src={qrUrl} alt="QR Code" className="rounded-lg border border-slate-700" />}
-            <div className="mt-1 text-xs text-slate-500">QR Code</div>
+            {qrUrl && <img src={qrUrl} alt="QR-Code" className="rounded-lg border border-slate-700" />}
+            <div className="mt-1 text-xs text-slate-500">QR-Code</div>
           </div>
           <div className="text-center">
             {barcodeUrl && <img src={barcodeUrl} alt="Barcode" className="rounded-lg border border-slate-700" />}
@@ -1076,7 +1076,7 @@ function DeviceFormModal({ device, categories, rooms, existingCount, onClose, on
   const toast = useToast();
 
   const handleSave = async () => {
-    if (!name) { toast('Device name is required', 'error'); return; }
+    if (!name) { toast('Geraetename ist erforderlich', 'error'); return; }
     const category = categories.find((c) => c.id === categoryId);
     const prefix = category?.name.slice(0, 3).toUpperCase() ?? 'DEV';
     const inventoryNumber = device?.inventory_number ?? generateInventoryNumber(prefix, existingCount);
@@ -1095,33 +1095,33 @@ function DeviceFormModal({ device, categories, rooms, existingCount, onClose, on
       const { error } = await supabase.from('devices').update(data).eq('id', device.id);
       if (error) { toast(error.message, 'error'); return; }
       await logActivity('device.update', 'device', device.id, { name });
-      toast('Device updated', 'success');
+      toast('Geraet aktualisiert', 'success');
     } else {
       const { error } = await supabase.from('devices').insert(data);
       if (error) { toast(error.message, 'error'); return; }
       await logActivity('device.create', 'device', undefined, { name, inventoryNumber });
-      toast('Device added', 'success');
+      toast('Geraet hinzugefuegt', 'success');
     }
     onSaved();
   };
 
   return (
-    <Modal open onClose={onClose} title={device ? 'Edit Device' : 'Add Device'} size="lg"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={handleSave}>Save</button></>}>
+    <Modal open onClose={onClose} title={device ? 'Geraet bearbeiten' : 'Geraet hinzufuegen'} size="lg"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={handleSave}>Speichern</button></>}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="label">Name *</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Beamer Epson EB-X51" /></div>
-          <div><label className="label">Category</label>
+          <div><label className="label">Name *</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="z.B. Beamer Epson EB-X51" /></div>
+          <div><label className="label">Kategorie</label>
             <select className="select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-              <option value="">Select...</option>
+              <option value="">Auswaehlen...</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-4">
-          <div><label className="label">Manufacturer</label><input className="input" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} /></div>
-          <div><label className="label">Model</label><input className="input" value={model} onChange={(e) => setModel(e.target.value)} /></div>
-          <div><label className="label">Serial Number</label><input className="input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} /></div>
+          <div><label className="label">Hersteller</label><input className="input" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} /></div>
+          <div><label className="label">Modell</label><input className="input" value={model} onChange={(e) => setModel(e.target.value)} /></div>
+          <div><label className="label">Seriennummer</label><input className="input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} /></div>
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div><label className="label">Status</label>
@@ -1129,35 +1129,35 @@ function DeviceFormModal({ device, categories, rooms, existingCount, onClose, on
               {(Object.keys(DEVICE_STATUS_META) as DeviceStatus[]).map((s) => <option key={s} value={s}>{DEVICE_STATUS_META[s].label}</option>)}
             </select>
           </div>
-          <div><label className="label">Condition</label>
+          <div><label className="label">Zustand</label>
             <select className="select" value={condition} onChange={(e) => setCondition(e.target.value as ConditionRating)}>
               {(Object.keys(CONDITION_META) as ConditionRating[]).map((c) => <option key={c} value={c}>{CONDITION_META[c].label}</option>)}
             </select>
           </div>
-          <div><label className="label">Value (EUR)</label><input type="number" className="input" value={value} onChange={(e) => setValue(Number(e.target.value))} /></div>
+          <div><label className="label">Wert (EUR)</label><input type="number" className="input" value={value} onChange={(e) => setValue(Number(e.target.value))} /></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="label">Tracking Method</label>
+          <div><label className="label">Tracking-Methode</label>
             <select className="select" value={trackingMethod} onChange={(e) => setTrackingMethod(e.target.value as TrackingMethod)}>
-              <option value="barcode">Barcode (standard devices)</option>
-              <option value="nfc">NFC (high-value devices)</option>
+              <option value="barcode">Barcode (Standardgeraete)</option>
+              <option value="nfc">NFC (hochwertige Geraete)</option>
             </select>
           </div>
-          <div><label className="label">Room</label>
+          <div><label className="label">Raum</label>
             <select className="select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-              <option value="">No room</option>
+              <option value="">Kein Raum</option>
               {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number})</option>)}
             </select>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <input type="checkbox" id="highValue" checked={isHighValue} onChange={(e) => setIsHighValue(e.target.checked)} className="rounded" />
-          <label htmlFor="highValue" className="text-sm text-slate-300">High-value device (requires NFC tracking)</label>
+          <label htmlFor="highValue" className="text-sm text-slate-300">Hochwertiges Geraet (erfordert NFC-Tracking)</label>
         </div>
-        <div><label className="label">Notes</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+        <div><label className="label">Notizen</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
         {!device && (
           <div className="rounded-lg bg-blue-950/30 border border-blue-500/20 px-3 py-2 text-xs text-blue-300">
-            Inventory number, barcode, NFC tag ID, and QR code will be auto-generated on save.
+            Inventarnummer, Barcode, NFC-Tag-ID und QR-Code werden beim Speichern automatisch generiert.
           </div>
         )}
       </div>

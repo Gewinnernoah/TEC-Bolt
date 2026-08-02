@@ -26,26 +26,26 @@ export function LendingPage() {
   const [showFulfill, setShowFulfill] = useState<LendingRequest | null>(null);
   const [showReturn, setShowReturn] = useState<LendingLoan | null>(null);
 
-  if (reqLoading || loanLoading) return <LoadingScreen message="Loading lending data..." />;
+  if (reqLoading || loanLoading) return <LoadingScreen message="Ausleihdaten werden geladen..." />;
 
   const myRequests = (requests ?? []).filter((r) => r.teacher_id === profile?.id);
   const pendingRequests = (requests ?? []).filter((r) => r.status === 'pending');
   const activeLoans = (loans ?? []).filter((l) => l.status === 'active');
 
   const tabs: { id: Tab; label: string; count?: number; icon: React.ComponentType<{ className?: string }> }[] = [
-    ...(isStaff ? [{ id: 'requests' as Tab, label: 'Requests', count: pendingRequests.length, icon: HandHelping }] : [{ id: 'requests' as Tab, label: 'My Requests', count: myRequests.length, icon: HandHelping }]),
-    { id: 'active', label: 'Active Loans', count: activeLoans.length, icon: Clock },
-    { id: 'history', label: 'History', icon: Calendar },
+    ...(isStaff ? [{ id: 'requests' as Tab, label: 'Anfragen', count: pendingRequests.length, icon: HandHelping }] : [{ id: 'requests' as Tab, label: 'Meine Anfragen', count: myRequests.length, icon: HandHelping }]),
+    { id: 'active', label: 'Aktive Ausleihen', count: activeLoans.length, icon: Clock },
+    { id: 'history', label: 'Verlauf', icon: Calendar },
   ];
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Lending System"
-        subtitle="Borrow, return, and manage device loans"
+        title="Ausleihsystem"
+        subtitle="Geraete ausleihen, zurueckgeben und verwalten"
         actions={
           <button onClick={() => setShowCreate(true)} className="btn-primary">
-            <Plus className="h-4 w-4" /> New Request
+            <Plus className="h-4 w-4" /> Neue Anfrage
           </button>
         }
       />
@@ -91,7 +91,7 @@ function RequestList({ requests, onFulfill, onApprove, onReject, readOnly }: {
   const [rejectReason, setRejectReason] = useState('');
   const toast = useToast();
 
-  if (requests.length === 0) return <div className="card"><EmptyState icon={HandHelping} title="No requests" message="Create a new lending request to get started" /></div>;
+  if (requests.length === 0) return <div className="card"><EmptyState icon={HandHelping} title="Keine Anfragen" message="Erstellen Sie eine neue Ausleihanfrage, um zu beginnen" /></div>;
 
   return (
     <div className="space-y-3">
@@ -100,44 +100,44 @@ function RequestList({ requests, onFulfill, onApprove, onReject, readOnly }: {
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-medium text-slate-200">{r.teacher?.full_name ?? 'Unknown'}</span>
+                <span className="text-sm font-medium text-slate-200">{r.teacher?.full_name ?? 'Unbekannt'}</span>
                 <span className={cn('badge', REQUEST_STATUS_META[r.status].bg, REQUEST_STATUS_META[r.status].color)}>{REQUEST_STATUS_META[r.status].label}</span>
                 {r.room && <span className="badge bg-slate-700/50 text-slate-300 border-slate-700"><MapPin className="h-3 w-3" />{r.room.name}</span>}
               </div>
               <div className="mt-1 text-xs text-slate-500">
-                {r.period?.name ?? 'Custom'} · {timeAgo(r.created_at)}
-                {r.pickup_at && <> · Pickup: {formatDateTime(r.pickup_at)}</>}
+                {r.period?.name ?? 'Benutzerdefiniert'} · {timeAgo(r.created_at)}
+                {r.pickup_at && <> · Abholung: {formatDateTime(r.pickup_at)}</>}
               </div>
               {r.items && r.items.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {r.items.map((item) => (
                     <span key={item.id} className="badge bg-slate-800 text-slate-300 border-slate-700 text-[10px]">
-                      {item.bundle?.name ?? item.device?.name ?? item.category?.name ?? 'Item'} ×{item.quantity}
+                      {item.bundle?.name ?? item.device?.name ?? item.category?.name ?? 'Artikel'} ×{item.quantity}
                     </span>
                   ))}
                 </div>
               )}
-              {r.rejection_reason && <div className="mt-2 text-xs text-red-400">Rejected: {r.rejection_reason}</div>}
+              {r.rejection_reason && <div className="mt-2 text-xs text-red-400">Abgelehnt: {r.rejection_reason}</div>}
               {r.notes && <div className="mt-2 text-xs text-slate-400">{r.notes}</div>}
             </div>
             {!readOnly && r.status === 'pending' && (
               <div className="flex items-center gap-2">
-                <button onClick={() => onApprove(r)} className="btn-secondary text-xs"><Check className="h-4 w-4" /> Approve</button>
+                <button onClick={() => onApprove(r)} className="btn-secondary text-xs"><Check className="h-4 w-4" /> Genehmigen</button>
                 <button onClick={() => { setRejecting(r); setRejectReason(''); }} className="btn-ghost text-red-400 text-xs"><X className="h-4 w-4" /></button>
               </div>
             )}
             {!readOnly && r.status === 'approved' && (
-              <button onClick={() => onFulfill(r)} className="btn-primary text-xs"><Package className="h-4 w-4" /> Fulfill</button>
+              <button onClick={() => onFulfill(r)} className="btn-primary text-xs"><Package className="h-4 w-4" /> Erfuellen</button>
             )}
           </div>
         </div>
       ))}
 
       {rejecting && (
-        <Modal open onClose={() => setRejecting(null)} title="Reject Request" size="sm"
-          footer={<><button className="btn-secondary" onClick={() => setRejecting(null)}>Cancel</button>
-          <button className="btn-danger" onClick={() => { if (!rejectReason.trim()) { toast('Please provide a reason', 'error'); return; } onReject(rejecting, rejectReason); setRejecting(null); }}>Reject</button></>}>
-          <div><label className="label">Reason for rejection</label><textarea className="input min-h-[80px]" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Explain why the request is being rejected..." /></div>
+        <Modal open onClose={() => setRejecting(null)} title="Anfrage ablehnen" size="sm"
+          footer={<><button className="btn-secondary" onClick={() => setRejecting(null)}>Abbrechen</button>
+          <button className="btn-danger" onClick={() => { if (!rejectReason.trim()) { toast('Bitte geben Sie einen Grund an', 'error'); return; } onReject(rejecting, rejectReason); setRejecting(null); }}>Ablehnen</button></>}>
+          <div><label className="label">Ablehnungsgrund</label><textarea className="input min-h-[80px]" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Erlaeutern Sie, warum die Anfrage abgelehnt wird..." /></div>
         </Modal>
       )}
     </div>
@@ -145,7 +145,7 @@ function RequestList({ requests, onFulfill, onApprove, onReject, readOnly }: {
 }
 
 function ActiveLoansList({ loans, onReturn }: { loans: LendingLoan[]; onReturn: (l: LendingLoan) => void }) {
-  if (loans.length === 0) return <div className="card"><EmptyState icon={Clock} title="No active loans" /></div>;
+  if (loans.length === 0) return <div className="card"><EmptyState icon={Clock} title="Keine aktiven Ausleihen" /></div>;
   return (
     <div className="space-y-3">
       {loans.map((loan) => {
@@ -155,26 +155,26 @@ function ActiveLoansList({ loans, onReturn }: { loans: LendingLoan[]; onReturn: 
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-slate-200">{loan.teacher?.full_name ?? 'Unknown'}</span>
+                  <span className="text-sm font-medium text-slate-200">{loan.teacher?.full_name ?? 'Unbekannt'}</span>
                   <span className={cn('badge', LOAN_STATUS_META[loan.status].bg, LOAN_STATUS_META[loan.status].color)}>{LOAN_STATUS_META[loan.status].label}</span>
-                  {overdue && <span className="badge bg-red-500/15 border-red-500/30 text-red-300"><AlertCircle className="h-3 w-3" /> Overdue</span>}
+                  {overdue && <span className="badge bg-red-500/15 border-red-500/30 text-red-300"><AlertCircle className="h-3 w-3" /> Ueberfaellig</span>}
                   {loan.room && <span className="badge bg-slate-700/50 text-slate-300 border-slate-700"><MapPin className="h-3 w-3" />{loan.room.name}</span>}
                 </div>
                 <div className="mt-1 text-xs text-slate-500">
-                  Checkout: {formatDateTime(loan.checkout_at)} · Due: {formatDateTime(loan.expected_return_at)}
+                  Ausgabe: {formatDateTime(loan.checkout_at)} · Rueckgabe: {formatDateTime(loan.expected_return_at)}
                 </div>
-                <div className="mt-2 text-xs text-slate-400">Staff: {loan.staff?.full_name ?? '—'}</div>
+                <div className="mt-2 text-xs text-slate-400">Personal: {loan.staff?.full_name ?? '—'}</div>
                 {loan.items && loan.items.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {loan.items.map((item) => (
                       <span key={item.id} className="badge bg-slate-800 text-slate-300 border-slate-700 text-[10px]">
-                        {item.device?.name ?? 'Device'} ({item.device?.inventory_number ?? '—'})
+                        {item.device?.name ?? 'Geraet'} ({item.device?.inventory_number ?? '—'})
                       </span>
                     ))}
                   </div>
                 )}
               </div>
-              <button onClick={() => onReturn(loan)} className="btn-secondary"><ArrowLeft className="h-4 w-4" /> Return</button>
+              <button onClick={() => onReturn(loan)} className="btn-secondary"><ArrowLeft className="h-4 w-4" /> Zurueckgeben</button>
             </div>
           </div>
         );
@@ -184,18 +184,18 @@ function ActiveLoansList({ loans, onReturn }: { loans: LendingLoan[]; onReturn: 
 }
 
 function HistoryList({ loans, requests }: { loans: LendingLoan[]; requests: LendingRequest[] }) {
-  if (loans.length === 0 && requests.length === 0) return <div className="card"><EmptyState icon={Calendar} title="No history yet" /></div>;
+  if (loans.length === 0 && requests.length === 0) return <div className="card"><EmptyState icon={Calendar} title="Noch kein Verlauf" /></div>;
   return (
     <div className="space-y-3">
       {loans.map((loan) => (
         <div key={loan.id} className="card p-3">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-sm text-slate-200">{loan.teacher?.full_name ?? 'Unknown'}</span>
-              <span className="ml-2 text-xs text-slate-500">{loan.items?.length ?? 0} device(s)</span>
+              <span className="text-sm text-slate-200">{loan.teacher?.full_name ?? 'Unbekannt'}</span>
+              <span className="ml-2 text-xs text-slate-500">{loan.items?.length ?? 0} Geraet(e)</span>
             </div>
             <div className="text-right text-xs text-slate-500">
-              <div>Returned {formatDateTime(loan.actual_return_at)}</div>
+              <div>Zurueckgegeben {formatDateTime(loan.actual_return_at)}</div>
               <span className={cn('badge mt-0.5', LOAN_STATUS_META[loan.status].bg, LOAN_STATUS_META[loan.status].color)}>{LOAN_STATUS_META[loan.status].label}</span>
             </div>
           </div>
@@ -256,8 +256,8 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
   const toggleBundle = (id: string) => setSelectedBundles((prev) => prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]);
 
   const submit = async () => {
-    if (!roomId || !periodId) { toast('Select a room and lending period', 'error'); return; }
-    if (selectedDevices.length === 0 && selectedBundles.length === 0) { toast('Select at least one device or bundle', 'error'); return; }
+    if (!roomId || !periodId) { toast('Waehlen Sie einen Raum und Ausleihzeitraum', 'error'); return; }
+    if (selectedDevices.length === 0 && selectedBundles.length === 0) { toast('Waehlen Sie mindestens ein Geraet oder Buendel', 'error'); return; }
 
     const { data: reqData, error: reqError } = await supabase.from('lending_requests').insert({
       teacher_id: profile?.id, room_id: roomId, period_id: periodId, status: 'pending', notes,
@@ -271,21 +271,21 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
     if (items.length) await supabase.from('lending_request_items').insert(items);
 
     await logActivity('request.create', 'request', reqData.id, { room: roomId });
-    toast('Lending request submitted', 'success');
+    toast('Ausleihanfrage gesendet', 'success');
     onSaved();
   };
 
   const availableDevices = (devices ?? []).filter((d) => d.status === 'available' && (!search || d.name.toLowerCase().includes(search.toLowerCase()) || d.inventory_number.toLowerCase().includes(search.toLowerCase())));
 
   return (
-    <Modal open onClose={onClose} title="New Lending Request" size="xl"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={submit}>Submit Request</button></>}>
+    <Modal open onClose={onClose} title="Neue Ausleihanfrage" size="xl"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={submit}>Anfrage senden</button></>}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="label">Room (required)</label>
+            <label className="label">Raum (erforderlich)</label>
             <select className="select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-              <option value="">Select room...</option>
+              <option value="">Raum auswaehlen...</option>
               {(rooms ?? []).map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number})</option>)}
             </select>
             {roomId && (rooms ?? []).find((r) => r.id === roomId)?.available_connections && (
@@ -295,9 +295,9 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
             )}
           </div>
           <div>
-            <label className="label">Lending Period</label>
+            <label className="label">Ausleihzeitraum</label>
             <select className="select" value={periodId} onChange={(e) => setPeriodId(e.target.value)}>
-              <option value="">Select period...</option>
+              <option value="">Zeitraum auswaehlen...</option>
               {periods.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.duration_minutes}min)</option>)}
             </select>
           </div>
@@ -306,9 +306,9 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
         {recommendations.length > 0 && (
           <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-3">
             <div className="flex items-center gap-2 text-sm font-medium text-cyan-300 mb-2">
-              <Sparkles className="h-4 w-4" /> Smart Recommendations
+              <Sparkles className="h-4 w-4" /> Smarte Empfehlungen
             </div>
-            <p className="text-xs text-cyan-400/80 mb-2">Based on the selected room's connections, these accessories are recommended:</p>
+            <p className="text-xs text-cyan-400/80 mb-2">Basierend auf den Anschluessen des ausgewaehlten Raums werden diese Zubehoerteile empfohlen:</p>
             <div className="flex flex-wrap gap-2">
               {recommendations.map((id) => {
                 const d = (devices ?? []).find((dev) => dev.id === id);
@@ -326,7 +326,7 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
 
         {bundles.length > 0 && (
           <div>
-            <h4 className="mb-2 text-sm font-semibold text-slate-200">Device Bundles</h4>
+            <h4 className="mb-2 text-sm font-semibold text-slate-200">Geraetebuendel</h4>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {bundles.map((b) => (
                 <button key={b.id} onClick={() => toggleBundle(b.id)} className={cn('card p-3 text-left transition-colors', selectedBundles.includes(b.id) ? 'border-blue-500 bg-blue-600/10' : 'hover:border-slate-700')}>
@@ -334,7 +334,7 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
                     <span className="text-sm font-medium text-slate-200">{b.name}</span>
                     {selectedBundles.includes(b.id) && <Check className="h-4 w-4 text-blue-400" />}
                   </div>
-                  <div className="mt-1 text-xs text-slate-500">{b.items?.length ?? 0} items</div>
+                  <div className="mt-1 text-xs text-slate-500">{b.items?.length ?? 0} Artikel</div>
                 </button>
               ))}
             </div>
@@ -343,10 +343,10 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-semibold text-slate-200">Individual Devices</h4>
+            <h4 className="text-sm font-semibold text-slate-200">Einzelne Geraete</h4>
             <div className="relative w-48">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-              <input className="input pl-8 py-1.5 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." />
+              <input className="input pl-8 py-1.5 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Suchen..." />
             </div>
           </div>
           <div className="scrollbar-thin max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-slate-800 p-2">
@@ -359,11 +359,11 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
                 {selectedDevices.includes(d.id) && <Check className="h-4 w-4 text-blue-400" />}
               </button>
             ))}
-            {availableDevices.length === 0 && <div className="py-4 text-center text-sm text-slate-500">No available devices found</div>}
+            {availableDevices.length === 0 && <div className="py-4 text-center text-sm text-slate-500">Keine verfuegbaren Geraete gefunden</div>}
           </div>
         </div>
 
-        <div><label className="label">Notes (optional)</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add any special instructions..." /></div>
+        <div><label className="label">Notizen (optional)</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Besondere Hinweise hinzufuegen..." /></div>
       </div>
     </Modal>
   );
@@ -390,9 +390,9 @@ function FulfillModal({ request, devices, onClose, onSaved }: { request: Lending
   const toggleDevice = (id: string) => setSelectedDeviceIds((prev) => prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]);
 
   const fulfill = async () => {
-    if (selectedDeviceIds.length === 0) { toast('Select at least one device to lend', 'error'); return; }
-    if (!signature) { toast('Signature is required', 'error'); return; }
-    if (!signatureName.trim()) { toast('Signature name is required', 'error'); return; }
+    if (selectedDeviceIds.length === 0) { toast('Waehlen Sie mindestens ein Geraet zum Ausleihen', 'error'); return; }
+    if (!signature) { toast('Unterschrift ist erforderlich', 'error'); return; }
+    if (!signatureName.trim()) { toast('Unterschriftsname ist erforderlich', 'error'); return; }
 
     const { data: loan, error: loanError } = await supabase.from('lending_loans').insert({
       request_id: request.id, teacher_id: request.teacher_id, staff_id: profile?.id,
@@ -412,7 +412,7 @@ function FulfillModal({ request, devices, onClose, onSaved }: { request: Lending
     await supabase.from('lending_requests').update({ status: 'fulfilled' }).eq('id', request.id);
 
     await logActivity('loan.create', 'loan', loan.id, { teacher: request.teacher_id, devices: selectedDeviceIds.length });
-    toast('Loan created successfully', 'success');
+    toast('Ausleihe erfolgreich erstellt', 'success');
     onSaved();
   };
 
@@ -421,25 +421,25 @@ function FulfillModal({ request, devices, onClose, onSaved }: { request: Lending
   const availableDevices = devices.filter((d) => d.status === 'available' || requestedDevices.includes(d.id));
 
   return (
-    <Modal open onClose={onClose} title="Fulfill Lending Request" size="lg"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={fulfill}><Check className="h-4 w-4" /> Complete Lending</button></>}>
+    <Modal open onClose={onClose} title="Ausleihanfrage erfuellen" size="lg"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={fulfill}><Check className="h-4 w-4" /> Ausleihe abschliessen</button></>}>
       <div className="space-y-4">
         <div className="card p-3">
           <div className="text-sm font-medium text-slate-200">{request.teacher?.full_name}</div>
-          <div className="text-xs text-slate-500">Room: {request.room?.name ?? '—'} · Period: {period?.name ?? '—'}</div>
+          <div className="text-xs text-slate-500">Raum: {request.room?.name ?? '—'} · Zeitraum: {period?.name ?? '—'}</div>
         </div>
 
         <div>
-          <h4 className="mb-2 text-sm font-semibold text-slate-200">Select Devices to Lend</h4>
+          <h4 className="mb-2 text-sm font-semibold text-slate-200">Geraete zum Ausleihen auswaehlen</h4>
           <div className="scrollbar-thin max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-slate-800 p-2">
             {availableDevices.map((d) => (
               <button key={d.id} onClick={() => toggleDevice(d.id)} className={cn('flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors', selectedDeviceIds.includes(d.id) ? 'border-blue-500 bg-blue-600/10' : 'border-slate-800 hover:bg-slate-800/30')}>
                 <div>
                   <div className="text-sm text-slate-200">{d.name}</div>
-                  <div className="text-xs text-slate-500">{d.inventory_number} · {d.barcode ?? 'No barcode'}</div>
+                  <div className="text-xs text-slate-500">{d.inventory_number} · {d.barcode ?? 'Kein Barcode'}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {requestedDevices.includes(d.id) && <span className="badge bg-cyan-500/15 border-cyan-500/30 text-cyan-300 text-[10px]">Requested</span>}
+                  {requestedDevices.includes(d.id) && <span className="badge bg-cyan-500/15 border-cyan-500/30 text-cyan-300 text-[10px]">Angefragt</span>}
                   {selectedDeviceIds.includes(d.id) && <Check className="h-4 w-4 text-blue-400" />}
                 </div>
               </button>
@@ -449,14 +449,14 @@ function FulfillModal({ request, devices, onClose, onSaved }: { request: Lending
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="label">Expected Return</label>
+            <label className="label">Erwartete Rueckgabe</label>
             <div className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300">{formatDateTime(expectedReturn)}</div>
           </div>
-          <div><label className="label">Signature Name</label><input className="input" value={signatureName} onChange={(e) => setSignatureName(e.target.value)} /></div>
+          <div><label className="label">Unterschriftsname</label><input className="input" value={signatureName} onChange={(e) => setSignatureName(e.target.value)} /></div>
         </div>
 
         <div>
-          <label className="label flex items-center gap-1"><PenTool className="h-3.5 w-3.5" /> Signature Confirmation (required)</label>
+          <label className="label flex items-center gap-1"><PenTool className="h-3.5 w-3.5" /> Unterschriftsbestaetigung (erforderlich)</label>
           <SignaturePad onChange={setSignature} />
         </div>
       </div>
@@ -484,33 +484,33 @@ function ReturnModal({ loan, onClose, onSaved }: { loan: LendingLoan; onClose: (
     }
 
     await logActivity('loan.return', 'loan', loan.id, { condition });
-    toast('Device(s) returned successfully', 'success');
+    toast('Geraet(e) erfolgreich zurueckgegeben', 'success');
     onSaved();
   };
 
   return (
-    <Modal open onClose={onClose} title="Return Devices" size="md"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={handleReturn}><ArrowLeft className="h-4 w-4" /> Confirm Return</button></>}>
+    <Modal open onClose={onClose} title="Geraete zurueckgeben" size="md"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={handleReturn}><ArrowLeft className="h-4 w-4" /> Rueckgabe bestaetigen</button></>}>
       <div className="space-y-4">
         <div className="card p-3">
           <div className="text-sm font-medium text-slate-200">{loan.teacher?.full_name}</div>
-          <div className="text-xs text-slate-500">Checked out: {formatDateTime(loan.checkout_at)}</div>
+          <div className="text-xs text-slate-500">Ausgeliehen: {formatDateTime(loan.checkout_at)}</div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {(loan.items ?? []).map((item) => <span key={item.id} className="badge bg-slate-800 text-slate-300 border-slate-700 text-[10px]">{item.device?.name}</span>)}
           </div>
         </div>
         <div>
-          <label className="label">Device Condition After Return</label>
+          <label className="label">Geraetzustand nach Rueckgabe</label>
           <div className="grid grid-cols-5 gap-2">
-            {([['excellent', 'Excellent', 'text-emerald-300'], ['good', 'Good', 'text-blue-300'], ['fair', 'Fair', 'text-amber-300'], ['damaged', 'Damaged', 'text-orange-300'], ['defective', 'Defective', 'text-red-300']] as const).map(([val, label, color]) => (
+            {([['excellent', 'Ausgezeichnet', 'text-emerald-300'], ['good', 'Gut', 'text-blue-300'], ['fair', 'Akzeptabel', 'text-amber-300'], ['damaged', 'Beschaedigt', 'text-orange-300'], ['defective', 'Defekt', 'text-red-300']] as const).map(([val, label, color]) => (
               <button key={val} onClick={() => setCondition(val)} className={cn('rounded-lg border px-2 py-2 text-xs font-medium transition-colors', condition === val ? 'border-blue-500 bg-blue-600/15 text-blue-300' : 'border-slate-700 text-slate-400 hover:border-slate-600', condition === val && color)}>{label}</button>
             ))}
           </div>
         </div>
-        <div><label className="label">Return Notes (optional)</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any issues noticed during return..." /></div>
+        <div><label className="label">Rueckgabehinweise (optional)</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Probleme bei der Rueckgabe..." /></div>
         {(condition === 'damaged' || condition === 'defective') && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-300">
-            <AlertCircle className="inline h-4 w-4 mr-1" /> Device will be marked as {condition === 'defective' ? 'defective' : 'in maintenance'} and a damage report should be filed.
+            <AlertCircle className="inline h-4 w-4 mr-1" /> Geraet wird markiert als {condition === 'defective' ? 'defekt' : 'in Wartung'} und ein Schaedenbericht sollte erstellt werden.
           </div>
         )}
       </div>

@@ -93,11 +93,11 @@ export function SignaturePad({ onChange, height = 180 }: SignaturePadProps) {
         />
         {!hasContent && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-600">
-            Sign here with your finger or mouse
+            Hier mit Finger oder Maus unterschreiben
           </div>
         )}
       </div>
-      {hasContent && <button onClick={clear} className="btn-ghost mt-2 text-xs">Clear signature</button>}
+      {hasContent && <button onClick={clear} className="btn-ghost mt-2 text-xs">Unterschrift löschen</button>}
     </div>
   );
 }

@@ -24,23 +24,23 @@ export function PrintingPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [showDetail, setShowDetail] = useState<PrintRequest | null>(null);
 
-  if (loading) return <LoadingScreen message="Loading print queue..." />;
+  if (loading) return <LoadingScreen message="Druck-Warteschlange wird geladen..." />;
 
   const myPrints = (prints ?? []).filter((p) => p.teacher_id === profile?.id);
   const queue = (prints ?? []).filter((p) => p.status === 'queued' || p.status === 'validating' || p.status === 'ready' || p.status === 'printing' || p.status === 'paused');
   const history = (prints ?? []).filter((p) => p.status === 'completed' || p.status === 'failed' || p.status === 'cancelled');
 
   const tabs: { id: Tab; label: string; count?: number; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'queue', label: 'Print Queue', count: queue.length, icon: Layers },
-    ...(isStaff ? [{ id: 'history' as Tab, label: 'History', icon: Clock }] : [{ id: 'history' as Tab, label: 'My Prints', count: myPrints.length, icon: Clock }]),
+    { id: 'queue', label: 'Druck-Warteschlange', count: queue.length, icon: Layers },
+    ...(isStaff ? [{ id: 'history' as Tab, label: 'Verlauf', icon: Clock }] : [{ id: 'history' as Tab, label: 'Meine Drucke', count: myPrints.length, icon: Clock }]),
     { id: 'filament', label: 'Filament', icon: Cpu },
     { id: 'faq', label: 'FAQ & Tutorials', icon: BookOpen },
   ];
 
   return (
     <div className="space-y-5">
-      <PageHeader title="3D Printing System" subtitle="Upload, track, and manage 3D print requests" actions={
-        <button onClick={() => setShowUpload(true)} className="btn-primary"><Upload className="h-4 w-4" /> New Print Request</button>
+      <PageHeader title="3D-Druck-System" subtitle="3D-Druckauftraege hochladen, verfolgen und verwalten" actions={
+        <button onClick={() => setShowUpload(true)} className="btn-primary"><Upload className="h-4 w-4" /> Neuer Druckauftrag</button>
       } />
 
       <div className="flex gap-1 border-b border-slate-800 overflow-x-auto scrollbar-thin">
@@ -75,13 +75,13 @@ function QueueTab({ prints, isStaff, onSelect, refresh }: { prints: PrintRequest
   };
 
   const reportFailed = async (print: PrintRequest) => {
-    const reason = window.prompt('Describe the failure reason:');
+    const reason = window.prompt('Fehlergrund beschreiben:');
     if (!reason) return;
     await updateStatus(print, 'failed', { failed_reason: reason });
-    toast('Print marked as failed', 'success');
+    toast('Druck als fehlgeschlagen markiert', 'success');
   };
 
-  if (prints.length === 0) return <div className="card"><EmptyState icon={Printer} title="Queue is empty" message="Upload a 3D model to start printing" /></div>;
+  if (prints.length === 0) return <div className="card"><EmptyState icon={Printer} title="Warteschlange ist leer" message="Laden Sie ein 3D-Modell hoch, um mit dem Drucken zu beginnen" /></div>;
 
   return (
     <div className="space-y-3">
@@ -97,12 +97,12 @@ function QueueTab({ prints, isStaff, onSelect, refresh }: { prints: PrintRequest
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-slate-200 truncate">{print.file_name}</div>
                   <div className="text-xs text-slate-500">
-                    {print.teacher?.full_name ?? 'Unknown'} · {print.filament_material} {print.filament_color} · {print.copies} copy(ies)
+                    {print.teacher?.full_name ?? 'Unbekannt'} · {print.filament_material} {print.filament_color} · {print.copies} Kopie(n)
                   </div>
                   {print.status === 'printing' && (
                     <div className="mt-2">
                       <div className="flex items-center gap-2 text-xs">
-                        <span className="text-emerald-300">Layer {print.current_layer}/{print.total_layers}</span>
+                        <span className="text-emerald-300">Schicht {print.current_layer}/{print.total_layers}</span>
                         <span className="text-slate-500">{print.progress_pct}%</span>
                         {print.estimated_finish_at && <span className="text-slate-500">ETA: {formatDateTime(print.estimated_finish_at)}</span>}
                       </div>
@@ -111,17 +111,17 @@ function QueueTab({ prints, isStaff, onSelect, refresh }: { prints: PrintRequest
                       </div>
                     </div>
                   )}
-                  {print.status === 'queued' && <div className="mt-1 text-xs text-slate-500">Position #{idx + 1} in queue · Submitted {timeAgo(print.created_at)}</div>}
-                  {print.status === 'failed' && print.failed_reason && <div className="mt-1 text-xs text-red-400">Failed: {print.failed_reason}</div>}
+                  {print.status === 'queued' && <div className="mt-1 text-xs text-slate-500">Position Nr. {idx + 1} in Warteschlange · Eingereicht {timeAgo(print.created_at)}</div>}
+                  {print.status === 'failed' && print.failed_reason && <div className="mt-1 text-xs text-red-400">Fehlgeschlagen: {print.failed_reason}</div>}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className={cn('badge', meta.bg, meta.color)}>{meta.label}</span>
-                {isStaff && print.status === 'ready' && <button onClick={() => updateStatus(print, 'printing', { started_at: new Date().toISOString(), progress_pct: 0 })} className="btn-primary text-xs"><Play className="h-3.5 w-3.5" /> Start</button>}
+                {isStaff && print.status === 'ready' && <button onClick={() => updateStatus(print, 'printing', { started_at: new Date().toISOString(), progress_pct: 0 })} className="btn-primary text-xs"><Play className="h-3.5 w-3.5" /> Starten</button>}
                 {isStaff && print.status === 'printing' && <button onClick={() => updateStatus(print, 'paused')} className="btn-secondary text-xs"><Pause className="h-3.5 w-3.5" /> Pause</button>}
-                {isStaff && print.status === 'paused' && <button onClick={() => updateStatus(print, 'printing')} className="btn-primary text-xs"><Play className="h-3.5 w-3.5" /> Resume</button>}
-                {isStaff && print.status === 'printing' && <button onClick={() => updateStatus(print, 'completed', { completed_at: new Date().toISOString(), progress_pct: 100 })} className="btn-secondary text-xs"><CheckCircle2 className="h-3.5 w-3.5" /> Complete</button>}
-                {print.status === 'printing' && <button onClick={() => reportFailed(print)} className="btn-ghost text-red-400 text-xs"><AlertTriangle className="h-3.5 w-3.5" /> Failed</button>}
+                {isStaff && print.status === 'paused' && <button onClick={() => updateStatus(print, 'printing')} className="btn-primary text-xs"><Play className="h-3.5 w-3.5" /> Fortsetzen</button>}
+                {isStaff && print.status === 'printing' && <button onClick={() => updateStatus(print, 'completed', { completed_at: new Date().toISOString(), progress_pct: 100 })} className="btn-secondary text-xs"><CheckCircle2 className="h-3.5 w-3.5" /> Abschliessen</button>}
+                {print.status === 'printing' && <button onClick={() => reportFailed(print)} className="btn-ghost text-red-400 text-xs"><AlertTriangle className="h-3.5 w-3.5" /> Fehlgeschlagen</button>}
               </div>
             </div>
           </div>
@@ -132,7 +132,7 @@ function QueueTab({ prints, isStaff, onSelect, refresh }: { prints: PrintRequest
 }
 
 function HistoryTab({ prints, onSelect }: { prints: PrintRequest[]; onSelect: (p: PrintRequest) => void }) {
-  if (prints.length === 0) return <div className="card"><EmptyState icon={Clock} title="No print history" /></div>;
+  if (prints.length === 0) return <div className="card"><EmptyState icon={Clock} title="Kein Druckverlauf" /></div>;
   return (
     <div className="space-y-2">
       {prints.map((print) => (
@@ -171,7 +171,7 @@ function FilamentTab() {
     load();
   };
 
-  if (loading) return <LoadingScreen message="Loading filament catalog..." />;
+  if (loading) return <LoadingScreen message="Filament-Katalog wird geladen..." />;
 
   const grouped = catalog.reduce<Record<string, FilamentCatalogEntry[]>>((acc, e) => {
     (acc[e.material] = acc[e.material] || []).push(e);
@@ -180,7 +180,7 @@ function FilamentTab() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-slate-200">Available Filament Colors & Materials</h3>
+      <h3 className="text-sm font-semibold text-slate-200">Verfuegbare Filament-Farben & Materialien</h3>
       {Object.entries(grouped).map(([material, entries]) => (
         <div key={material}>
           <div className="mb-2 text-xs font-medium text-slate-400 uppercase tracking-wider">{material}</div>
@@ -194,7 +194,7 @@ function FilamentTab() {
                 <div className="mx-auto mb-2 h-12 w-12 rounded-full border-2 border-slate-700" style={{ backgroundColor: entry.color_hex }} />
                 <div className="text-xs font-medium text-slate-200">{entry.color}</div>
                 <div className={cn('mt-1 text-[10px]', entry.is_available ? 'text-emerald-400' : 'text-slate-500')}>
-                  {entry.is_available ? 'Available' : 'Unavailable'}
+                  {entry.is_available ? 'Verfuegbar' : 'Nicht verfuegbar'}
                 </div>
               </button>
             ))}
@@ -207,18 +207,18 @@ function FilamentTab() {
 
 function PrintFaqTab() {
   const faqs = [
-    { q: 'What file formats are supported?', a: 'STL, OBJ, 3MF, and GCODE files are supported. STL is the most common and recommended format for 3D printing.' },
-    { q: 'How long does a print take?', a: 'Print time depends on the model size, layer height, and infill. Small objects may take 30 minutes, while large complex models can take several hours.' },
-    { q: 'What is slicing?', a: 'Slicing is the process of converting a 3D model (STL/OBJ) into printer instructions (GCODE). The slicer determines layer height, infill, supports, and print speed.' },
-    { q: 'What layer height should I use?', a: '0.2mm is standard for most prints. Use 0.12mm for detailed models and 0.3mm for fast draft prints.' },
-    { q: 'Do I need supports?', a: 'Supports are needed for overhangs greater than 45 degrees. Most slicers can auto-generate supports.' },
-    { q: 'What is infill?', a: 'Infill is the internal structure of your print. 15-20% is sufficient for most objects. Higher infill makes parts stronger but uses more filament and time.' },
-    { q: 'Why did my print fail?', a: 'Common causes: poor bed adhesion, incorrect temperature, warping, ran out of filament, or power interruption. Use the "Report Failed" button to document the issue.' },
+    { q: 'Welche Dateiformate werden unterstuetzt?', a: 'STL, OBJ, 3MF und GCODE-Dateien werden unterstuetzt. STL ist das haeufigste und empfohlene Format fuer 3D-Druck.' },
+    { q: 'Wie lange dauert ein Druck?', a: 'Die Druckzeit haengt von der Modellgroesse, Schichthoehe und Fuellung ab. Kleine Objekte koennen 30 Minuten dauern, waehrend grosse komplexe Modelle mehrere Stunden benoetigen.' },
+    { q: 'Was ist Slicing?', a: 'Slicing ist der Prozess der Umwandlung eines 3D-Modells (STL/OBJ) in Druckeranweisungen (GCODE). Der Slicer bestimmt Schichthoehe, Fuellung, Stuetzstrukturen und Druckgeschwindigkeit.' },
+    { q: 'Welche Schichthoehe sollte ich verwenden?', a: '0.2mm ist Standard fuer die meisten Drucke. Verwenden Sie 0.12mm fuer detaillierte Modelle und 0.3mm fuer schnelle Entwurfsdrucke.' },
+    { q: 'Benoetige ich Stuetzstrukturen?', a: 'Stuetzstrukturen werden fuer Ueberhaenge ueber 45 Grad benoetigt. Die meisten Slicer koennen Stuetzstrukturen automatisch generieren.' },
+    { q: 'Was ist Fuellung?', a: 'Fuellung ist die innere Struktur Ihres Drucks. 15-20% sind fuer die meisten Objekte ausreichend. Hoehere Fuellung macht Teile staerker, verbraucht aber mehr Filament und Zeit.' },
+    { q: 'Warum ist mein Druck fehlgeschlagen?', a: 'Haeufige Ursachen: schlechte Betthaftung, falsche Temperatur, Verzug, Filament ging aus oder Stromunterbrechung. Verwenden Sie die Schaltflaeche „Als fehlgeschlagen melden“, um das Problem zu dokumentieren.' },
   ];
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-slate-200">3D Printing FAQ & Tutorials</h3>
+      <h3 className="text-sm font-semibold text-slate-200">3D-Druck FAQ & Tutorials</h3>
       {faqs.map((faq, i) => (
         <details key={i} className="card p-4 group">
           <summary className="flex cursor-pointer items-center justify-between text-sm font-medium text-slate-200 list-none">
@@ -263,7 +263,7 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
     setFileSize(file.size);
     setFileFormat(ext);
     setFileValid(valid && sizeMB <= maxSize);
-    setValidationNotes(valid ? (sizeMB > maxSize ? `File too large (max ${maxSize}MB)` : 'File format supported') : `Unsupported format. Allowed: ${supportedFormats.join(', ')}`);
+    setValidationNotes(valid ? (sizeMB > maxSize ? `Datei zu gross (max. ${maxSize}MB)` : 'Dateiformat unterstuetzt') : `Nicht unterstuetztes Format. Erlaubt: ${supportedFormats.join(', ')}`);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -274,14 +274,14 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   };
 
   const submit = async () => {
-    if (!fileName || !fileValid || !selectedFile) { toast('Please upload a valid file', 'error'); return; }
-    if (!filamentId) { toast('Select a filament color/material', 'error'); return; }
+    if (!fileName || !fileValid || !selectedFile) { toast('Bitte eine gueltige Datei hochladen', 'error'); return; }
+    if (!filamentId) { toast('Bitte Filament-Farbe/Material auswaehlen', 'error'); return; }
 
     setUploading(true);
     const filament = catalog.find((c) => c.id === filamentId);
     const { data: profileData } = await supabase.auth.getUser();
     const userId = profileData.user?.id;
-    if (!userId) { toast('Authentication error', 'error'); setUploading(false); return; }
+    if (!userId) { toast('Authentifizierungsfehler', 'error'); setUploading(false); return; }
 
     const filePath = `${userId}/${Date.now()}-${fileName}`;
     const { error: uploadError } = await supabase.storage.from('print-files').upload(filePath, selectedFile);
@@ -296,23 +296,23 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
 
     const { error } = await supabase.from('print_requests').insert({
       teacher_id: userId, file_name: fileName, file_url: fileUrl, file_size_bytes: fileSize,
-      file_format: fileFormat, file_valid: true, validation_notes: 'Validated on upload',
+      file_format: fileFormat, file_valid: true, validation_notes: 'Beim Hochladen validiert',
       filament_catalog_id: filamentId, filament_material: filament?.material, filament_color: filament?.color,
       copies, notes, status: 'queued',
     });
     if (error) { toast(error.message, 'error'); setUploading(false); return; }
     await logActivity('print.upload', 'print', undefined, { fileName });
-    toast('Print request submitted to queue', 'success');
+    toast('Druckauftrag in Warteschlange eingereicht', 'success');
     setUploading(false);
     onSaved();
   };
 
   return (
-    <Modal open onClose={onClose} title="New 3D Print Request" size="lg"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={submit}><Upload className="h-4 w-4" /> Submit</button></>}>
+    <Modal open onClose={onClose} title="Neuer 3D-Druckauftrag" size="lg"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={submit}><Upload className="h-4 w-4" /> Einreichen</button></>}>
       <div className="space-y-4">
         <div>
-          <label className="label">Upload 3D Model File</label>
+          <label className="label">3D-Modelldatei hochladen</label>
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
@@ -333,17 +333,17 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
             ) : (
               <div>
                 <Upload className="mx-auto h-8 w-8 text-slate-500 mb-2" />
-                <div className="text-sm text-slate-400">Drag & drop or click to upload</div>
-                <div className="mt-1 text-xs text-slate-500">Supported: {supportedFormats.join(', ').toUpperCase()} · Max {maxSize}MB</div>
+                <div className="text-sm text-slate-400">Per Drag & Drop ablegen oder klicken zum Hochladen</div>
+                <div className="mt-1 text-xs text-slate-500">Unterstuetzt: {supportedFormats.join(', ').toUpperCase()} · Max {maxSize}MB</div>
               </div>
             )}
           </div>
         </div>
 
         <div>
-          <label className="label">Filament Color & Material</label>
+          <label className="label">Filament-Farbe & Material</label>
           <select className="select" value={filamentId} onChange={(e) => setFilamentId(e.target.value)}>
-            <option value="">Select filament...</option>
+            <option value="">Filament auswaehlen...</option>
             {catalog.map((c) => <option key={c.id} value={c.id}>{c.material} — {c.color}</option>)}
           </select>
           {filamentId && (
@@ -355,10 +355,10 @@ function UploadModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="label">Copies</label><input type="number" min={1} max={20} className="input" value={copies} onChange={(e) => setCopies(Math.max(1, Number(e.target.value)))} /></div>
+          <div><label className="label">Kopien</label><input type="number" min={1} max={20} className="input" value={copies} onChange={(e) => setCopies(Math.max(1, Number(e.target.value)))} /></div>
         </div>
 
-        <div><label className="label">Notes (optional)</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Special instructions, layer height, infill preferences..." /></div>
+        <div><label className="label">Notizen (optional)</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Besondere Anweisungen, Schichthoehe, Fuellungseinstellungen..." /></div>
       </div>
     </Modal>
   );
@@ -377,7 +377,7 @@ function PrintDetailModal({ print, isStaff, onClose, onUpdated }: { print: Print
       current_layer: currentLayer, total_layers: totalLayers, progress_pct: pct, estimated_finish_at: eta,
     }).eq('id', print.id);
     if (error) { toast(error.message, 'error'); return; }
-    toast('Print progress updated', 'success');
+    toast('Druckfortschritt aktualisiert', 'success');
     onUpdated();
   };
 
@@ -386,19 +386,19 @@ function PrintDetailModal({ print, isStaff, onClose, onUpdated }: { print: Print
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="card p-3"><div className="text-xs text-slate-500">Status</div><span className={cn('badge mt-1', PRINT_STATUS_META[print.status].bg, PRINT_STATUS_META[print.status].color)}>{PRINT_STATUS_META[print.status].label}</span></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Requested by</div><div className="text-sm text-slate-200">{print.teacher?.full_name ?? '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Angefordert von</div><div className="text-sm text-slate-200">{print.teacher?.full_name ?? '—'}</div></div>
           <div className="card p-3"><div className="text-xs text-slate-500">Filament</div><div className="text-sm text-slate-200">{print.filament_material} {print.filament_color}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Copies</div><div className="text-sm text-slate-200">{print.copies}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">File Size</div><div className="text-sm text-slate-200">{print.file_size_bytes ? formatBytes(print.file_size_bytes) : '—'}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Submitted</div><div className="text-sm text-slate-200">{timeAgo(print.created_at)}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Kopien</div><div className="text-sm text-slate-200">{print.copies}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Dateigroesse</div><div className="text-sm text-slate-200">{print.file_size_bytes ? formatBytes(print.file_size_bytes) : '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Eingereicht</div><div className="text-sm text-slate-200">{timeAgo(print.created_at)}</div></div>
         </div>
 
         {print.status === 'printing' && (
           <div className="card p-4">
-            <h4 className="mb-3 text-sm font-semibold text-slate-200">Live Print Progress</h4>
+            <h4 className="mb-3 text-sm font-semibold text-slate-200">Live-Druckfortschritt</h4>
             <div className="mb-4">
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-emerald-300">Layer {print.current_layer}/{print.total_layers}</span>
+                <span className="text-emerald-300">Schicht {print.current_layer}/{print.total_layers}</span>
                 <span className="text-slate-400">{print.progress_pct}%</span>
               </div>
               <div className="h-3 rounded-full bg-slate-800 overflow-hidden">
@@ -409,20 +409,20 @@ function PrintDetailModal({ print, isStaff, onClose, onUpdated }: { print: Print
 
             {isStaff && (
               <div className="border-t border-slate-800 pt-3 space-y-2">
-                <div className="text-xs text-slate-400">Update progress (staff only):</div>
+                <div className="text-xs text-slate-400">Fortschritt aktualisieren (nur Personal):</div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div><label className="label">Current Layer</label><input type="number" className="input" value={currentLayer} onChange={(e) => setCurrentLayer(Number(e.target.value))} /></div>
-                  <div><label className="label">Total Layers</label><input type="number" className="input" value={totalLayers} onChange={(e) => setTotalLayers(Number(e.target.value))} /></div>
-                  <div><label className="label">Progress %</label><input type="number" className="input" value={progress} onChange={(e) => setProgress(Number(e.target.value))} /></div>
+                  <div><label className="label">Aktuelle Schicht</label><input type="number" className="input" value={currentLayer} onChange={(e) => setCurrentLayer(Number(e.target.value))} /></div>
+                  <div><label className="label">Gesamte Schichten</label><input type="number" className="input" value={totalLayers} onChange={(e) => setTotalLayers(Number(e.target.value))} /></div>
+                  <div><label className="label">Fortschritt %</label><input type="number" className="input" value={progress} onChange={(e) => setProgress(Number(e.target.value))} /></div>
                 </div>
-                <button onClick={updateProgress} className="btn-primary w-full">Update Progress</button>
+                <button onClick={updateProgress} className="btn-primary w-full">Fortschritt aktualisieren</button>
               </div>
             )}
           </div>
         )}
 
-        {print.notes && <div className="card p-3"><div className="text-xs text-slate-500">Notes</div><div className="text-sm text-slate-300">{print.notes}</div></div>}
-        {print.failed_reason && <div className="card p-3 border-red-500/30"><div className="text-xs text-red-400">Failure Reason</div><div className="text-sm text-slate-300">{print.failed_reason}</div></div>}
+        {print.notes && <div className="card p-3"><div className="text-xs text-slate-500">Notizen</div><div className="text-sm text-slate-300">{print.notes}</div></div>}
+        {print.failed_reason && <div className="card p-3 border-red-500/30"><div className="text-xs text-red-400">Fehlergrund</div><div className="text-sm text-slate-300">{print.failed_reason}</div></div>}
       </div>
     </Modal>
   );

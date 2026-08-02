@@ -32,18 +32,18 @@ export function MonitoringPage() {
     supabase.from('buildings').select('*').order('name').then(({ data }: any) => setBuildings((data ?? []) as Building[]));
   }, []);
 
-  if (loading) return <LoadingScreen message="Loading monitoring data..." />;
+  if (loading) return <LoadingScreen message="Monitoring-Daten werden geladen..." />;
 
   const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'overview', label: 'Dashboard', icon: Activity },
     { id: 'heatmap', label: 'Heatmap', icon: Radio },
-    { id: 'rooms', label: 'Rooms', icon: Building2 },
-    { id: 'measure', label: 'New Measurement', icon: Gauge },
+    { id: 'rooms', label: 'Raeume', icon: Building2 },
+    { id: 'measure', label: 'Neue Messung', icon: Gauge },
   ];
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Network & Building Monitoring" subtitle="Real-time Wi-Fi health, room status, and building overview" actions={isStaff ? <button onClick={() => setShowMeasure(true)} className="btn-primary"><Gauge className="h-4 w-4" /> Record Measurement</button> : undefined} />
+      <PageHeader title="Netzwerk- & Gebaeudeueberwachung" subtitle="Echtzeit-WLAN-Zustand, Raum-Status und Gebaeudeueberblick" actions={isStaff ? <button onClick={() => setShowMeasure(true)} className="btn-primary"><Gauge className="h-4 w-4" /> Messung erfassen</button> : undefined} />
 
       <div className="flex gap-1 border-b border-slate-800 overflow-x-auto scrollbar-thin">
         {tabs.map((t) => (
@@ -90,15 +90,15 @@ function OverviewTab({ rooms, measurements, buildings, thresholds, minDownload }
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard label="Good" value={stats.good} total={stats.total} color="emerald" icon={CheckCircle2} />
+        <StatCard label="Gut" value={stats.good} total={stats.total} color="emerald" icon={CheckCircle2} />
         <StatCard label="OK" value={stats.ok} total={stats.total} color="amber" icon={Signal} />
-        <StatCard label="Poor" value={stats.poor} total={stats.total} color="orange" icon={TrendingDown} />
-        <StatCard label="Critical" value={stats.critical} total={stats.total} color="red" icon={AlertTriangle} />
-        <StatCard label="Outages" value={stats.outages} total={stats.total} color="red" icon={Zap} />
+        <StatCard label="Schlecht" value={stats.poor} total={stats.total} color="orange" icon={TrendingDown} />
+        <StatCard label="Kritisch" value={stats.critical} total={stats.total} color="red" icon={AlertTriangle} />
+        <StatCard label="Ausfaelle" value={stats.outages} total={stats.total} color="red" icon={Zap} />
       </div>
 
       <div className="card p-4">
-        <h3 className="mb-3 text-sm font-semibold text-slate-200">Buildings Overview</h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-200">Gebaeudeueberblick</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {buildings.map((b) => {
             const buildingRooms = rooms.filter((r) => r.building_id === b.id);
@@ -112,37 +112,37 @@ function OverviewTab({ rooms, measurements, buildings, thresholds, minDownload }
                     <span className="text-sm font-medium text-slate-200">{b.name}</span>
                   </div>
                   <span className={cn('badge', poorCount > 0 ? 'bg-red-500/15 border-red-500/30 text-red-300' : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300')}>
-                    {poorCount > 0 ? `${poorCount} issues` : 'All good'}
+                    {poorCount > 0 ? `${poorCount} Probleme` : 'Alle in Ordnung'}
                   </span>
                 </div>
-                <div className="mt-2 text-xs text-slate-500">{buildingRooms.length} rooms · {b.floors} floors</div>
+                <div className="mt-2 text-xs text-slate-500">{buildingRooms.length} Raeume · {b.floors} Etagen</div>
               </div>
             );
           })}
-          {buildings.length === 0 && <p className="text-sm text-slate-500">No buildings registered</p>}
+          {buildings.length === 0 && <p className="text-sm text-slate-500">Keine Gebaeude registriert</p>}
         </div>
       </div>
 
       <div className="card">
-        <div className="border-b border-slate-800 px-4 py-2 text-sm font-semibold text-slate-200">Latest Measurements</div>
+        <div className="border-b border-slate-800 px-4 py-2 text-sm font-semibold text-slate-200">Neueste Messungen</div>
         <div className="scrollbar-thin max-h-80 overflow-y-auto">
           {Array.from(latestPerRoom.values()).sort((a, b) => a.signal_strength_dbm - b.signal_strength_dbm).map((m) => {
             const q = getWifiQuality(m.signal_strength_dbm, thresholds);
             return (
               <div key={m.id} className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800/50">
                 <div>
-                  <div className="text-sm text-slate-200">{m.room?.name ?? 'Unknown'}</div>
+                  <div className="text-sm text-slate-200">{m.room?.name ?? 'Unbekannt'}</div>
                   <div className="text-xs text-slate-500">{timeAgo(m.created_at)}</div>
                 </div>
                 <div className="flex items-center gap-4 text-xs">
                   <div><span className="text-slate-500">Signal:</span> <span className={wifiQualityColor(q)}>{m.signal_strength_dbm} dBm</span></div>
                   <div><span className="text-slate-500">Down:</span> <span className={m.download_mbps >= minDownload ? 'text-emerald-400' : 'text-red-400'}>{m.download_mbps} Mbps</span></div>
-                  {m.is_outage && <span className="badge bg-red-500/15 border-red-500/30 text-red-300">Outage</span>}
+                  {m.is_outage && <span className="badge bg-red-500/15 border-red-500/30 text-red-300">Ausfall</span>}
                 </div>
               </div>
             );
           })}
-          {latestPerRoom.size === 0 && <EmptyState icon={Wifi} title="No measurements" message="Record a Wi-Fi measurement to start monitoring" />}
+          {latestPerRoom.size === 0 && <EmptyState icon={Wifi} title="Keine Messungen" message="Erfassen Sie eine WLAN-Messung, um mit dem Monitoring zu beginnen" />}
         </div>
       </div>
     </div>
@@ -181,18 +181,18 @@ function HeatmapTab({ rooms, measurements, buildings, thresholds }: {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <select className="select w-auto" value={selectedBuilding} onChange={(e) => setSelectedBuilding(e.target.value)}>
-          <option value="all">All Buildings</option>
+          <option value="all">Alle Gebaeude</option>
           {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       </div>
 
       <div className="card p-4">
         <div className="mb-3 flex items-center gap-4 text-xs">
-          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-emerald-500/40" /> Good</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-emerald-500/40" /> Gut</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-amber-500/40" /> OK</span>
-          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-orange-500/40" /> Poor</span>
-          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-red-500/40" /> Critical/Outage</span>
-          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-slate-800" /> No data</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-orange-500/40" /> Schlecht</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-red-500/40" /> Kritisch/Ausfall</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-slate-800" /> Keine Daten</span>
         </div>
         <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {filteredRooms.map((room) => {
@@ -200,7 +200,7 @@ function HeatmapTab({ rooms, measurements, buildings, thresholds }: {
             return (
               <div key={room.id} className={cn('rounded-lg border-2 p-3 transition-all', heatColor(measurement))}>
                 <div className="text-sm font-medium">{room.name}</div>
-                <div className="text-xs opacity-80">{room.room_number} · Floor {room.floor}</div>
+                <div className="text-xs opacity-80">{room.room_number} · Etage {room.floor}</div>
                 {measurement && (
                   <div className="mt-1.5 text-xs space-y-0.5">
                     <div>Signal: {measurement.signal_strength_dbm} dBm</div>
@@ -208,11 +208,11 @@ function HeatmapTab({ rooms, measurements, buildings, thresholds }: {
                     <div>Ping: {measurement.ping_ms} ms</div>
                   </div>
                 )}
-                {!measurement && <div className="mt-1.5 text-xs opacity-60">No data</div>}
+                {!measurement && <div className="mt-1.5 text-xs opacity-60">Keine Daten</div>}
               </div>
             );
           })}
-          {filteredRooms.length === 0 && <div className="col-span-full"><EmptyState icon={Radio} title="No rooms" /></div>}
+          {filteredRooms.length === 0 && <div className="col-span-full"><EmptyState icon={Radio} title="Keine Raeume" /></div>}
         </div>
       </div>
     </div>
@@ -235,14 +235,14 @@ function RoomsTab({ rooms, onSelect }: {
           </div>
           {room.photos.length > 0 && <img src={room.photos[0]} alt={room.name} className="mt-2 h-32 w-full rounded-lg object-cover border border-slate-700" />}
           <div className="mt-2 space-y-1 text-xs text-slate-400">
-            <div>Capacity: {room.capacity ?? '—'}</div>
-            <div>Type: {room.room_type}</div>
-            {room.installed_technology.length > 0 && <div>Tech: {room.installed_technology.join(', ')}</div>}
-            {room.available_connections.length > 0 && <div>Connections: {room.available_connections.join(', ')}</div>}
+            <div>Kapazitaet: {room.capacity ?? '—'}</div>
+            <div>Typ: {room.room_type}</div>
+            {room.installed_technology.length > 0 && <div>Technik: {room.installed_technology.join(', ')}</div>}
+            {room.available_connections.length > 0 && <div>Verbindungen: {room.available_connections.join(', ')}</div>}
           </div>
         </button>
       ))}
-      {rooms.length === 0 && <div className="col-span-full"><EmptyState icon={Building2} title="No rooms" /></div>}
+      {rooms.length === 0 && <div className="col-span-full"><EmptyState icon={Building2} title="Keine Raeume" /></div>}
     </div>
   );
 }
@@ -280,15 +280,15 @@ function MeasureTab({ rooms, onSaved, embedded }: { rooms: Room[]; onSaved: () =
       const ulTime = (performance.now() - ulStart) / 1000;
       setUpload(ulTime > 0 ? Math.round((100_000 * 8) / (ulTime * 1_000_000) * 100) / 100 : 0);
 
-      toast('Speed test completed', 'success');
+      toast('Geschwindigkeitstest abgeschlossen', 'success');
     } catch {
-      toast('Speed test failed', 'error');
+      toast('Geschwindigkeitstest fehlgeschlagen', 'error');
     }
     setRunning(false);
   };
 
   const save = async () => {
-    if (!roomId) { toast('Select a room', 'error'); return; }
+    if (!roomId) { toast('Bitte Raum auswaehlen', 'error'); return; }
     const { data: profileData } = await supabase.auth.getUser();
     const { error } = await supabase.from('wifi_measurements').insert({
       room_id: roomId, measured_by: profileData.user?.id,
@@ -297,38 +297,38 @@ function MeasureTab({ rooms, onSaved, embedded }: { rooms: Room[]; onSaved: () =
     });
     if (error) { toast(error.message, 'error'); return; }
     await logActivity('wifi.measure', 'room', roomId, { signal, download });
-    toast('Measurement recorded', 'success');
+    toast('Messung erfasst', 'success');
     onSaved();
   };
 
   const content = (
     <div className="space-y-4">
-      <div><label className="label">Room *</label>
+      <div><label className="label">Raum *</label>
         <select className="select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-          <option value="">Select room...</option>
+          <option value="">Raum auswaehlen...</option>
           {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number})</option>)}
         </select>
       </div>
       <button onClick={runSpeedtest} disabled={running} className="btn-secondary w-full">
-        {running ? <><Activity className="h-4 w-4 animate-spin" /> Running speed test...</> : <><Gauge className="h-4 w-4" /> Run Automatic Speed Test</>}
+        {running ? <><Activity className="h-4 w-4 animate-spin" /> Geschwindigkeitstest laeuft...</> : <><Gauge className="h-4 w-4" /> Automatischen Geschwindigkeitstest starten</>}
       </button>
       <div className="grid grid-cols-2 gap-4">
-        <div><label className="label">Signal Strength (dBm)</label><input type="number" className="input" value={signal} onChange={(e) => setSignal(Number(e.target.value))} /></div>
+        <div><label className="label">Signalstaerke (dBm)</label><input type="number" className="input" value={signal} onChange={(e) => setSignal(Number(e.target.value))} /></div>
         <div><label className="label">Download (Mbps)</label><input type="number" className="input" value={download} onChange={(e) => setDownload(Number(e.target.value))} /></div>
         <div><label className="label">Upload (Mbps)</label><input type="number" className="input" value={upload} onChange={(e) => setUpload(Number(e.target.value))} /></div>
         <div><label className="label">Ping (ms)</label><input type="number" className="input" value={ping} onChange={(e) => setPing(Number(e.target.value))} /></div>
         <div><label className="label">Jitter (ms)</label><input type="number" className="input" value={jitter} onChange={(e) => setJitter(Number(e.target.value))} /></div>
-        <div><label className="label">Packet Loss (%)</label><input type="number" className="input" value={packetLoss} onChange={(e) => setPacketLoss(Number(e.target.value))} /></div>
+        <div><label className="label">Paketverlust (%)</label><input type="number" className="input" value={packetLoss} onChange={(e) => setPacketLoss(Number(e.target.value))} /></div>
       </div>
-      <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={isOutage} onChange={(e) => setIsOutage(e.target.checked)} className="rounded" /> Mark as outage</label>
-      <div><label className="label">Notes</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-      <button onClick={save} className="btn-primary w-full"><Upload className="h-4 w-4" /> Save Measurement</button>
+      <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={isOutage} onChange={(e) => setIsOutage(e.target.checked)} className="rounded" /> Als Ausfall markieren</label>
+      <div><label className="label">Notizen</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+      <button onClick={save} className="btn-primary w-full"><Upload className="h-4 w-4" /> Messung speichern</button>
     </div>
   );
 
   if (embedded) {
     return (
-      <Modal open onClose={onSaved} title="Record Wi-Fi Measurement" size="md">{content}</Modal>
+      <Modal open onClose={onSaved} title="WLAN-Messung erfassen" size="md">{content}</Modal>
     );
   }
 
@@ -347,26 +347,26 @@ function RoomDetailModal({ room, measurements, onClose }: { room: Room; measurem
           </div>
         )}
         <div className="grid grid-cols-2 gap-4">
-          <div className="card p-3"><div className="text-xs text-slate-500">Room Number</div><div className="text-sm text-slate-200">{room.room_number}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Floor</div><div className="text-sm text-slate-200">{room.floor}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Type</div><div className="text-sm text-slate-200">{room.room_type}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Capacity</div><div className="text-sm text-slate-200">{room.capacity ?? '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Raumnummer</div><div className="text-sm text-slate-200">{room.room_number}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Etage</div><div className="text-sm text-slate-200">{room.floor}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Typ</div><div className="text-sm text-slate-200">{room.room_type}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Kapazitaet</div><div className="text-sm text-slate-200">{room.capacity ?? '—'}</div></div>
         </div>
         {room.installed_technology.length > 0 && (
-          <div className="card p-3"><div className="text-xs text-slate-500 mb-2">Installed Technology</div><div className="flex flex-wrap gap-1.5">{room.installed_technology.map((tech) => <span key={tech} className="badge bg-blue-500/15 border-blue-500/30 text-blue-300">{tech}</span>)}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500 mb-2">Installierte Technik</div><div className="flex flex-wrap gap-1.5">{room.installed_technology.map((tech) => <span key={tech} className="badge bg-blue-500/15 border-blue-500/30 text-blue-300">{tech}</span>)}</div></div>
         )}
         {room.available_connections.length > 0 && (
-          <div className="card p-3"><div className="text-xs text-slate-500 mb-2">Available Connections</div><div className="flex flex-wrap gap-1.5">{room.available_connections.map((conn) => <span key={conn} className="badge bg-slate-700/50 text-slate-300 border-slate-700">{conn}</span>)}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500 mb-2">Verfuegbare Verbindungen</div><div className="flex flex-wrap gap-1.5">{room.available_connections.map((conn) => <span key={conn} className="badge bg-slate-700/50 text-slate-300 border-slate-700">{conn}</span>)}</div></div>
         )}
         {roomMeasurements.length > 0 && (
           <div className="card">
-            <div className="border-b border-slate-800 px-4 py-2 text-sm font-semibold text-slate-200">Recent Wi-Fi Measurements</div>
+            <div className="border-b border-slate-800 px-4 py-2 text-sm font-semibold text-slate-200">Aktuelle WLAN-Messungen</div>
             <div className="scrollbar-thin max-h-40 overflow-y-auto">
               {roomMeasurements.map((m) => (
                 <div key={m.id} className="flex items-center justify-between px-4 py-2 border-b border-slate-800/50 text-xs">
                   <span className="text-slate-500">{formatDateTime(m.created_at)}</span>
                   <span className="text-slate-300">{m.signal_strength_dbm} dBm · {m.download_mbps} Mbps</span>
-                  {m.is_outage && <span className="badge bg-red-500/15 border-red-500/30 text-red-300 text-[10px]">Outage</span>}
+                  {m.is_outage && <span className="badge bg-red-500/15 border-red-500/30 text-red-300 text-[10px]">Ausfall</span>}
                 </div>
               ))}
             </div>

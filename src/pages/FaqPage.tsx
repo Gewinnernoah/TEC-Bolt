@@ -52,31 +52,31 @@ export function FaqPage() {
     if (!selected) return;
     const { error } = await supabase.from('faqs').delete().eq('id', selected.id);
     if (error) { toast(error.message, 'error'); return; }
-    toast('FAQ deleted', 'success');
+    toast('FAQ geloescht', 'success');
     setSelected(null);
     deleteModal.closeModal();
     load();
   };
 
-  if (loading) return <LoadingScreen message="Loading knowledge base..." />;
+  if (loading) return <LoadingScreen message="Wissensdatenbank wird geladen..." />;
 
   return (
     <div className="space-y-5">
-      <PageHeader title="FAQ & Knowledge Base" subtitle="Setup instructions, tutorials, and device-specific help" actions={isStaff ? <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary"><Plus className="h-4 w-4" /> Add Article</button> : undefined} />
+      <PageHeader title="FAQ & Wissensdatenbank" subtitle="Einrichtungsanleitungen, Tutorials und geraetespezifische Hilfe" actions={isStaff ? <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary"><Plus className="h-4 w-4" /> Artikel hinzufuegen</button> : undefined} />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search articles, tutorials, tags..." className="input pl-10" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Artikel, Tutorials, Tags suchen..." className="input pl-10" />
         </div>
         <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="select w-auto">
-          <option value="all">All Categories</option>
+          <option value="all">Alle Kategorien</option>
           {categories2.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card"><EmptyState icon={BookOpen} title="No articles found" message={isStaff ? 'Add the first knowledge base article' : 'No articles match your search'} /></div>
+        <div className="card"><EmptyState icon={BookOpen} title="Keine Artikel gefunden" message={isStaff ? 'Ersten Wissensdatenbank-Artikel hinzufuegen' : 'Keine Artikel entsprechen der Suche'} /></div>
       ) : (
         <div className="space-y-2">
           {filtered.map((faq) => (
@@ -116,7 +116,7 @@ export function FaqPage() {
             <div className="prose prose-invert max-w-none text-sm text-slate-300 whitespace-pre-wrap">{selected.content}</div>
             {selected.video_url && (
               <div className="mt-4">
-                <a href={selected.video_url} target="_blank" rel="noreferrer" className="btn-secondary"><Video className="h-4 w-4" /> Watch Video Tutorial</a>
+                <a href={selected.video_url} target="_blank" rel="noreferrer" className="btn-secondary"><Video className="h-4 w-4" /> Video-Tutorial ansehen</a>
               </div>
             )}
           </div>
@@ -125,7 +125,7 @@ export function FaqPage() {
 
       {showForm && <FaqFormModal faq={editing} categories={categories} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={() => { setShowForm(false); setEditing(null); load(); }} />}
 
-      <ConfirmDialog open={deleteModal.open} onClose={deleteModal.closeModal} onConfirm={handleDelete} title="Delete FAQ" message="Are you sure?" confirmLabel="Delete" danger />
+      <ConfirmDialog open={deleteModal.open} onClose={deleteModal.closeModal} onConfirm={handleDelete} title="FAQ loeschen" message="Sind Sie sicher?" confirmLabel="Loeschen" danger />
     </div>
   );
 }
@@ -142,7 +142,7 @@ function FaqFormModal({ faq, categories, onClose, onSaved }: {
   const toast = useToast();
 
   const save = async () => {
-    if (!title || !content) { toast('Title and content are required', 'error'); return; }
+    if (!title || !content) { toast('Titel und Inhalt sind erforderlich', 'error'); return; }
     const data: Record<string, unknown> = {
       title, category, content,
       tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
@@ -156,27 +156,27 @@ function FaqFormModal({ faq, categories, onClose, onSaved }: {
       const { error } = await supabase.from('faqs').insert(data);
       if (error) { toast(error.message, 'error'); return; }
     }
-    toast('Article saved', 'success');
+    toast('Artikel gespeichert', 'success');
     onSaved();
   };
 
   return (
-    <Modal open onClose={onClose} title={faq ? 'Edit Article' : 'Add Article'} size="lg"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={save}>Save</button></>}>
+    <Modal open onClose={onClose} title={faq ? 'Artikel bearbeiten' : 'Artikel hinzufuegen'} size="lg"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={save}>Speichern</button></>}>
       <div className="space-y-4">
-        <div><label className="label">Title</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+        <div><label className="label">Titel</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="label">Category</label><input className="input" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="general, setup, tutorial..." /></div>
-          <div><label className="label">Device Category (optional)</label>
+          <div><label className="label">Kategorie</label><input className="input" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="allgemein, einrichtung, tutorial..." /></div>
+          <div><label className="label">Geraetekategorie (optional)</label>
             <select className="select" value={deviceCategoryId} onChange={(e) => setDeviceCategoryId(e.target.value)}>
-              <option value="">None</option>
+              <option value="">Keine</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         </div>
-        <div><label className="label">Content</label><textarea className="input min-h-[200px]" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Write the article content..." /></div>
-        <div><label className="label">Tags (comma-separated)</label><input className="input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="setup, projector, wifi..." /></div>
-        <div><label className="label">Video URL (optional)</label><input className="input" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/..." /></div>
+        <div><label className="label">Inhalt</label><textarea className="input min-h-[200px]" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Artikelinhalt schreiben..." /></div>
+        <div><label className="label">Tags (durch Komma getrennt)</label><input className="input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="einrichtung, beamer, wlan..." /></div>
+        <div><label className="label">Video-URL (optional)</label><input className="input" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/..." /></div>
       </div>
     </Modal>
   );

@@ -45,7 +45,7 @@ export function AdminUsersPage() {
     const { error } = await supabase.from('profiles').update({ is_active: !user.is_active }).eq('id', user.id);
     if (error) { toast(error.message, 'error'); return; }
     await logActivity('user.toggle_active', 'user', user.id, { active: !user.is_active });
-    toast(`User ${!user.is_active ? 'activated' : 'deactivated'}`, 'success');
+    toast(`Benutzer ${!user.is_active ? 'aktiviert' : 'deaktiviert'}`, 'success');
     load();
   };
 
@@ -54,35 +54,35 @@ export function AdminUsersPage() {
     const { error } = await supabase.from('profiles').update(updates).eq('id', editing.id);
     if (error) { toast(error.message, 'error'); return; }
     await logActivity('user.update', 'user', editing.id, updates);
-    toast('User updated', 'success');
+    toast('Benutzer aktualisiert', 'success');
     setEditing(null);
     load();
   };
 
-  if (loading) return <LoadingScreen message="Loading users..." />;
+  if (loading) return <LoadingScreen message="Benutzer werden geladen..." />;
 
   return (
     <div className="space-y-5">
-      <PageHeader title="User Management" subtitle="Manage user accounts, roles, and permissions" />
+      <PageHeader title="Benutzerverwaltung" subtitle="Benutzerkonten, Rollen und Berechtigungen verwalten" />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatBox label="Total Users" value={stats.total} icon={Users} color="blue" />
-        <StatBox label="Admins" value={stats.admins} icon={Shield} color="red" />
-        <StatBox label="Staff" value={stats.staff} icon={UserCog} color="cyan" />
-        <StatBox label="Teachers" value={stats.teachers} icon={Users} color="emerald" />
-        <StatBox label="Active" value={stats.active} icon={CheckCircle2} color="emerald" />
+        <StatBox label="Benutzer gesamt" value={stats.total} icon={Users} color="blue" />
+        <StatBox label="Administratoren" value={stats.admins} icon={Shield} color="red" />
+        <StatBox label="Personal" value={stats.staff} icon={UserCog} color="cyan" />
+        <StatBox label="Lehrer" value={stats.teachers} icon={Users} color="emerald" />
+        <StatBox label="Aktiv" value={stats.active} icon={CheckCircle2} color="emerald" />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search users..." className="input pl-10" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Benutzer suchen..." className="input pl-10" />
         </div>
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="select w-auto">
-          <option value="all">All Roles</option>
-          <option value="admin">Admins</option>
-          <option value="staff">Staff</option>
-          <option value="teacher">Teachers</option>
+          <option value="all">Alle Rollen</option>
+          <option value="admin">Administratoren</option>
+          <option value="staff">Personal</option>
+          <option value="teacher">Lehrer</option>
         </select>
       </div>
 
@@ -91,13 +91,13 @@ export function AdminUsersPage() {
           <table className="w-full">
             <thead className="bg-slate-900/50">
               <tr>
-                <th className="table-header">User</th>
-                <th className="table-header">Role</th>
-                <th className="table-header">Department</th>
+                <th className="table-header">Benutzer</th>
+                <th className="table-header">Rolle</th>
+                <th className="table-header">Abteilung</th>
                 <th className="table-header">Status</th>
-                <th className="table-header">Biometric</th>
-                <th className="table-header">Auto-Logout</th>
-                <th className="table-header">Actions</th>
+                <th className="table-header">Biometrie</th>
+                <th className="table-header">Auto-Sperre</th>
+                <th className="table-header">Aktionen</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
@@ -116,15 +116,15 @@ export function AdminUsersPage() {
                   <td className="table-cell text-xs text-slate-400">{user.department ?? '—'}</td>
                   <td className="table-cell">
                     <span className={cn('badge', user.is_active ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300' : 'bg-red-500/15 border-red-500/30 text-red-300')}>
-                      {user.is_active ? 'Active' : 'Inactive'}
+                      {user.is_active ? 'Aktiv' : 'Inaktiv'}
                     </span>
                   </td>
-                  <td className="table-cell">{user.fingerprint_enrolled ? <Fingerprint className="h-4 w-4 text-emerald-400" /> : <span className="text-xs text-slate-500">Not enrolled</span>}</td>
-                  <td className="table-cell text-xs">{user.exempt_auto_logout ? <span className="text-amber-300">Exempt</span> : <span className="text-slate-400">Enabled</span>}</td>
+                  <td className="table-cell">{user.fingerprint_enrolled ? <Fingerprint className="h-4 w-4 text-emerald-400" /> : <span className="text-xs text-slate-500">Nicht registriert</span>}</td>
+                  <td className="table-cell text-xs">{user.exempt_auto_logout ? <span className="text-amber-300">Befreit</span> : <span className="text-slate-400">Aktiv</span>}</td>
                   <td className="table-cell">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => setEditing(user)} className="btn-icon" title="Edit"><Edit className="h-4 w-4" /></button>
-                      {user.id !== currentUser?.id && <button onClick={() => toggleActive(user)} className="btn-icon" title={user.is_active ? 'Deactivate' : 'Activate'}>{user.is_active ? <Ban className="h-4 w-4 text-red-400" /> : <CheckCircle2 className="h-4 w-4 text-emerald-400" />}</button>}
+                      <button onClick={() => setEditing(user)} className="btn-icon" title="Bearbeiten"><Edit className="h-4 w-4" /></button>
+                      {user.id !== currentUser?.id && <button onClick={() => toggleActive(user)} className="btn-icon" title={user.is_active ? 'Deaktivieren' : 'Aktivieren'}>{user.is_active ? <Ban className="h-4 w-4 text-red-400" /> : <CheckCircle2 className="h-4 w-4 text-emerald-400" />}</button>}
                     </div>
                   </td>
                 </tr>
@@ -132,7 +132,7 @@ export function AdminUsersPage() {
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && <EmptyState icon={Users} title="No users found" />}
+        {filtered.length === 0 && <EmptyState icon={Users} title="Keine Benutzer gefunden" />}
       </div>
 
       {editing && <EditUserModal user={editing} onClose={() => setEditing(null)} onSave={saveUser} />}
@@ -163,25 +163,25 @@ function EditUserModal({ user, onClose, onSave }: { user: Profile; onClose: () =
   const [isActive, setIsActive] = useState(user.is_active);
 
   return (
-    <Modal open onClose={onClose} title={`Edit ${user.full_name}`} size="md"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={() => onSave({ full_name: fullName, role, department: department || null, phone: phone || null, exempt_auto_logout: exemptAutoLogout, is_active: isActive })}>Save</button></>}>
+    <Modal open onClose={onClose} title={`Bearbeiten: ${user.full_name}`} size="md"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={() => onSave({ full_name: fullName, role, department: department || null, phone: phone || null, exempt_auto_logout: exemptAutoLogout, is_active: isActive })}>Speichern</button></>}>
       <div className="space-y-4">
-        <div><label className="label">Full Name</label><input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} /></div>
+        <div><label className="label">Vollstaendiger Name</label><input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} /></div>
         <div><label className="label">Email</label><input className="input" value={user.email} disabled /></div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="label">Role</label>
+          <div><label className="label">Rolle</label>
             <select className="select" value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
-              <option value="admin">Administrator</option><option value="staff">Lending Staff</option><option value="teacher">Teacher</option>
+              <option value="admin">Administrator</option><option value="staff">Ausleih-Personal</option><option value="teacher">Lehrer</option>
             </select>
           </div>
-          <div><label className="label">Department</label><input className="input" value={department} onChange={(e) => setDepartment(e.target.value)} /></div>
+          <div><label className="label">Abteilung</label><input className="input" value={department} onChange={(e) => setDepartment(e.target.value)} /></div>
         </div>
-        <div><label className="label">Phone</label><input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+        <div><label className="label">Telefon</label><input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={exemptAutoLogout} onChange={(e) => setExemptAutoLogout(e.target.checked)} className="rounded" /> Exempt from auto-logout</label>
-          <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded" /> Account active</label>
+          <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={exemptAutoLogout} onChange={(e) => setExemptAutoLogout(e.target.checked)} className="rounded" /> Von Auto-Sperre befreit</label>
+          <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded" /> Konto aktiv</label>
         </div>
-        {user.fingerprint_enrolled && <div className="flex items-center gap-2 rounded-lg bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300"><Fingerprint className="h-4 w-4" /> Fingerprint authentication enrolled</div>}
+        {user.fingerprint_enrolled && <div className="flex items-center gap-2 rounded-lg bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300"><Fingerprint className="h-4 w-4" /> Fingerabdruck-Authentifizierung registriert</div>}
       </div>
     </Modal>
   );

@@ -31,7 +31,7 @@ export function TicketsPage() {
     supabase.from('ticket_categories').select('*').eq('is_enabled', true).order('sort_order').then(({ data }: { data: any[] | null }) => setCategories((data ?? []) as TicketCategory[]));
   }, []);
 
-  if (loading) return <LoadingScreen message="Loading tickets..." />;
+  if (loading) return <LoadingScreen message="Tickets werden geladen..." />;
 
   const allTickets = tickets ?? [];
   const openTickets = allTickets.filter((t) => t.status === 'open' || t.status === 'in_progress');
@@ -41,16 +41,16 @@ export function TicketsPage() {
   const displayed = tab === 'all' ? allTickets : tab === 'open' ? openTickets : tab === 'mine' ? myTickets : escalatedTickets;
 
   const tabs = [
-    { id: 'all' as const, label: 'All Tickets', count: allTickets.length },
-    { id: 'open' as const, label: 'Open', count: openTickets.length },
-    { id: 'mine' as const, label: 'My Tickets', count: myTickets.length },
-    { id: 'escalated' as const, label: 'Escalated', count: escalatedTickets.length },
+    { id: 'all' as const, label: 'Alle Tickets', count: allTickets.length },
+    { id: 'open' as const, label: 'Offen', count: openTickets.length },
+    { id: 'mine' as const, label: 'Meine Tickets', count: myTickets.length },
+    { id: 'escalated' as const, label: 'Eskaliert', count: escalatedTickets.length },
   ];
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Technical Support Tickets" subtitle="Report and track technical issues, questions, and requests" actions={
-        <button onClick={() => setShowCreate(true)} className="btn-primary"><Plus className="h-4 w-4" /> New Ticket</button>
+      <PageHeader title="Technische Support-Tickets" subtitle="Technische Probleme, Fragen und Anfragen melden und verfolgen" actions={
+        <button onClick={() => setShowCreate(true)} className="btn-primary"><Plus className="h-4 w-4" /> Neues Ticket</button>
       } />
 
       {/* Category quick-select */}
@@ -83,7 +83,7 @@ export function TicketsPage() {
       </div>
 
       {displayed.length === 0 ? (
-        <div className="card"><EmptyState icon={Ticket} title="No tickets" message="Create a new ticket to get help" /></div>
+        <div className="card"><EmptyState icon={Ticket} title="Keine Tickets" message="Erstellen Sie ein neues Ticket, um Hilfe zu erhalten" /></div>
       ) : (
         <div className="space-y-2">
           {displayed.map((ticket) => (
@@ -123,7 +123,7 @@ function TicketRow({ ticket, onClick }: { ticket: TicketType; onClick: () => voi
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <span className={cn('badge', TICKET_STATUS_META[ticket.status].bg, TICKET_STATUS_META[ticket.status].color)}>{TICKET_STATUS_META[ticket.status].label}</span>
           <span className={cn('badge', TICKET_PRIORITY_META[ticket.priority].bg, TICKET_PRIORITY_META[ticket.priority].color)}>{TICKET_PRIORITY_META[ticket.priority].label}</span>
-          {ticket.escalated && <span className="badge bg-red-500/15 border-red-500/30 text-red-300"><AlertTriangle className="h-3 w-3" /> Escalated</span>}
+          {ticket.escalated && <span className="badge bg-red-500/15 border-red-500/30 text-red-300"><AlertTriangle className="h-3 w-3" /> Eskaliert</span>}
         </div>
       </div>
     </button>
@@ -183,17 +183,17 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
         timestamp: new Date().toISOString(),
       };
       setSpeedtestResult(result);
-      toast('Speed test completed', 'success');
+      toast('Geschwindigkeitstest abgeschlossen', 'success');
     } catch {
-      toast('Speed test failed - network error', 'error');
+      toast('Geschwindigkeitstest fehlgeschlagen - Netzwerkfehler', 'error');
     }
     setRunningSpeedtest(false);
   };
 
   const submit = async () => {
-    if (!categoryId || !title) { toast('Select a category and enter a title', 'error'); return; }
+    if (!categoryId || !title) { toast('Bitte Kategorie auswaehlen und Titel eingeben', 'error'); return; }
     const cat = categories.find((c) => c.id === categoryId);
-    if (cat?.requires_room && !roomId) { toast('Room selection is required for this category', 'error'); return; }
+    if (cat?.requires_room && !roomId) { toast('Raumauswahl ist fuer diese Kategorie erforderlich', 'error'); return; }
 
     let ticketNumber: string | null = null;
     try {
@@ -211,16 +211,16 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
     }).select().single();
     if (error) { toast(error.message, 'error'); return; }
     await logActivity('ticket.create', 'ticket', data.id, { title, category: cat?.key });
-    toast('Ticket created', 'success');
+    toast('Ticket erstellt', 'success');
     onSaved();
   };
 
   return (
-    <Modal open onClose={onClose} title="New Support Ticket" size="lg"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={submit}><Send className="h-4 w-4" /> Submit Ticket</button></>}>
+    <Modal open onClose={onClose} title="Neues Support-Ticket" size="lg"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={submit}><Send className="h-4 w-4" /> Ticket einreichen</button></>}>
       <div className="space-y-4">
         <div>
-          <label className="label">Category *</label>
+          <label className="label">Kategorie *</label>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {categories.map((cat) => {
               const Icon = CATEGORY_ICONS[cat.icon] ?? Ticket;
@@ -234,22 +234,22 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
           </div>
         </div>
 
-        <div><label className="label">Title *</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Brief summary of the issue" /></div>
+        <div><label className="label">Titel *</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Kurze Zusammenfassung des Problems" /></div>
 
-        <div><label className="label">Description</label><textarea className="input min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Provide detailed information about the issue..." /></div>
+        <div><label className="label">Beschreibung</label><textarea className="input min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detaillierte Informationen zum Problem angeben..." /></div>
 
         {category?.requires_room && (
           <div>
-            <label className="label">Room * <MapPin className="inline h-3 w-3" /></label>
+            <label className="label">Raum * <MapPin className="inline h-3 w-3" /></label>
             <select className="select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-              <option value="">Select room...</option>
-              {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number}) - Floor {r.floor}</option>)}
+              <option value="">Raum auswaehlen...</option>
+              {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number}) - Etage {r.floor}</option>)}
             </select>
           </div>
         )}
 
         <div>
-          <label className="label">Priority</label>
+          <label className="label">Prioritaet</label>
           <div className="grid grid-cols-4 gap-2">
             {(['low', 'normal', 'high', 'urgent'] as TicketPriority[]).map((p) => (
               <button key={p} onClick={() => setPriority(p)} className={cn('rounded-lg border px-2 py-2 text-xs font-medium transition-colors capitalize', priority === p ? cn(TICKET_PRIORITY_META[p].bg, TICKET_PRIORITY_META[p].color, 'border-transparent') : 'border-slate-700 text-slate-400')}>{TICKET_PRIORITY_META[p].label}</button>
@@ -262,10 +262,10 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Gauge className="h-5 w-5 text-amber-400" />
-                <span className="text-sm font-medium text-amber-300">Speed Test Required</span>
+                <span className="text-sm font-medium text-amber-300">Geschwindigkeitstest erforderlich</span>
               </div>
               <button onClick={runSpeedtest} disabled={runningSpeedtest} className="btn-secondary text-xs">
-                {runningSpeedtest ? <><Activity className="h-3.5 w-3.5 animate-spin" /> Running...</> : 'Run Test'}
+                {runningSpeedtest ? <><Activity className="h-3.5 w-3.5 animate-spin" /> Laeuft...</> : 'Test starten'}
               </button>
             </div>
             {speedtestResult && (
@@ -280,10 +280,10 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
         )}
 
         <div>
-          <label className="label">Photos (max 4)</label>
+          <label className="label">Fotos (max. 4)</label>
           <div className="flex items-center gap-3">
             <label className="btn-secondary cursor-pointer">
-              <Camera className="h-4 w-4" /> Upload Photos
+              <Camera className="h-4 w-4" /> Fotos hochladen
               <input type="file" accept="image/*" multiple className="hidden" onChange={handlePhoto} />
             </label>
             {photos.map((p, i) => <img key={i} src={p} alt="" className="h-16 w-16 rounded-lg object-cover border border-slate-700" />)}
@@ -322,7 +322,7 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
   const updateTicket = async (updates: Record<string, unknown>) => {
     const { error } = await supabase.from('tickets').update(updates).eq('id', ticket.id);
     if (error) { toast(error.message, 'error'); return; }
-    toast('Ticket updated', 'success');
+    toast('Ticket aktualisiert', 'success');
   };
 
   const escalate = async () => {
@@ -339,17 +339,17 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
 
   const printReport = () => {
     const html = `<html><head><style>body{font-family:Arial;margin:40px;color:#333}table{width:100%;border-collapse:collapse}td{padding:8px;border:1px solid #ddd}.header{text-align:center;border-bottom:2px solid #333;padding-bottom:10px;margin-bottom:20px}</style></head><body>
-    <div class="header"><h1>Ticket Report</h1><p>School TEC Hub</p></div>
+    <div class="header"><h1>Ticket-Bericht</h1><p>School TEC Hub</p></div>
     <table>
-    <tr><td><strong>Ticket #</strong></td><td>${ticket.ticket_number}</td></tr>
-    <tr><td><strong>Title</strong></td><td>${ticket.title}</td></tr>
-    <tr><td><strong>Category</strong></td><td>${ticket.category?.name ?? ticket.category_key}</td></tr>
-    <tr><td><strong>Priority</strong></td><td>${ticket.priority}</td></tr>
+    <tr><td><strong>Ticket-Nr.</strong></td><td>${ticket.ticket_number}</td></tr>
+    <tr><td><strong>Titel</strong></td><td>${ticket.title}</td></tr>
+    <tr><td><strong>Kategorie</strong></td><td>${ticket.category?.name ?? ticket.category_key}</td></tr>
+    <tr><td><strong>Prioritaet</strong></td><td>${ticket.priority}</td></tr>
     <tr><td><strong>Status</strong></td><td>${ticket.status}</td></tr>
-    <tr><td><strong>Room</strong></td><td>${ticket.room?.name ?? '—'}</td></tr>
-    <tr><td><strong>Description</strong></td><td>${ticket.description ?? '—'}</td></tr>
-    <tr><td><strong>Created</strong></td><td>${formatDateTime(ticket.created_at)}</td></tr>
-    <tr><td><strong>Resolution</strong></td><td>${resolution || ticket.resolution_notes || '—'}</td></tr>
+    <tr><td><strong>Raum</strong></td><td>${ticket.room?.name ?? '—'}</td></tr>
+    <tr><td><strong>Beschreibung</strong></td><td>${ticket.description ?? '—'}</td></tr>
+    <tr><td><strong>Erstellt</strong></td><td>${formatDateTime(ticket.created_at)}</td></tr>
+    <tr><td><strong>Loesung</strong></td><td>${resolution || ticket.resolution_notes || '—'}</td></tr>
     </table></body></html>`;
     printHtml(html);
   };
@@ -360,11 +360,11 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
     <Modal open onClose={onClose} title={ticket.title} size="lg"
       footer={
         <>
-          <button onClick={printReport} className="btn-secondary"><FileText className="h-4 w-4" /> Print</button>
+          <button onClick={printReport} className="btn-secondary"><FileText className="h-4 w-4" /> Drucken</button>
           {isStaff && ticket.status !== 'resolved' && ticket.status !== 'closed' && (
             <>
-              <button onClick={escalateModal.openModal} className="btn-secondary text-red-400"><ArrowUp className="h-4 w-4" /> Escalate</button>
-              <button onClick={resolve} className="btn-primary"><CheckCircle2 className="h-4 w-4" /> Resolve</button>
+              <button onClick={escalateModal.openModal} className="btn-secondary text-red-400"><ArrowUp className="h-4 w-4" /> Eskalieren</button>
+              <button onClick={resolve} className="btn-primary"><CheckCircle2 className="h-4 w-4" /> Loesen</button>
             </>
           )}
         </>
@@ -388,20 +388,20 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
             </select>
           </div>
           <div className="card p-3">
-            <label className="label">Priority</label>
+            <label className="label">Prioritaet</label>
             <select className="select" value={priority} onChange={(e) => { setPriority(e.target.value as TicketPriority); updateTicket({ priority: e.target.value }); }} disabled={!isStaff}>
               {(Object.keys(TICKET_PRIORITY_META) as TicketPriority[]).map((p) => <option key={p} value={p}>{TICKET_PRIORITY_META[p].label}</option>)}
             </select>
           </div>
         </div>
 
-        {ticket.description && <div className="card p-3"><div className="text-xs text-slate-500">Description</div><p className="mt-1 text-sm text-slate-300">{ticket.description}</p></div>}
+        {ticket.description && <div className="card p-3"><div className="text-xs text-slate-500">Beschreibung</div><p className="mt-1 text-sm text-slate-300">{ticket.description}</p></div>}
 
         {ticket.room && <div className="card p-3 flex items-center gap-2"><MapPin className="h-4 w-4 text-slate-400" /><span className="text-sm text-slate-300">{ticket.room.name} ({ticket.room.room_number})</span></div>}
 
         {ticket.speedtest_result && (
           <div className="card p-3">
-            <div className="flex items-center gap-2 mb-2"><Gauge className="h-4 w-4 text-amber-400" /><span className="text-xs font-medium text-slate-300">Speed Test Results</span></div>
+            <div className="flex items-center gap-2 mb-2"><Gauge className="h-4 w-4 text-amber-400" /><span className="text-xs font-medium text-slate-300">Geschwindigkeitstest-Ergebnisse</span></div>
             <div className="grid grid-cols-4 gap-2 text-center">
               <div><div className="text-xs text-slate-500">Download</div><div className="text-sm font-bold text-emerald-400">{ticket.speedtest_result.download_mbps} Mbps</div></div>
               <div><div className="text-xs text-slate-500">Upload</div><div className="text-sm font-bold text-blue-400">{ticket.speedtest_result.upload_mbps} Mbps</div></div>
@@ -413,51 +413,51 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
 
         {ticket.photos.length > 0 && (
           <div>
-            <div className="text-xs text-slate-500 mb-2">Photos</div>
+            <div className="text-xs text-slate-500 mb-2">Fotos</div>
             <div className="flex flex-wrap gap-2">
-              {ticket.photos.map((url, i) => <img key={i} src={url} alt={`Photo ${i + 1}`} className="h-24 w-24 rounded-lg object-cover border border-slate-700" />)}
+              {ticket.photos.map((url, i) => <img key={i} src={url} alt={`Foto ${i + 1}`} className="h-24 w-24 rounded-lg object-cover border border-slate-700" />)}
             </div>
           </div>
         )}
 
         {isStaff && (
           <div className="card p-3">
-            <label className="label">Resolution Notes</label>
-            <textarea className="input min-h-[60px]" value={resolution} onChange={(e) => setResolution(e.target.value)} placeholder="Document the resolution..." />
+            <label className="label">Loesungs-Notizen</label>
+            <textarea className="input min-h-[60px]" value={resolution} onChange={(e) => setResolution(e.target.value)} placeholder="Loesung dokumentieren..." />
           </div>
         )}
 
         {/* Comments */}
         <div>
-          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200"><MessageSquare className="h-4 w-4" /> Comments ({comments.length})</h4>
+          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200"><MessageSquare className="h-4 w-4" /> Kommentare ({comments.length})</h4>
           <div className="space-y-2 mb-3">
             {comments.map((c) => (
               <div key={c.id} className={cn('card p-3', c.is_internal && 'border-amber-500/20 bg-amber-950/10')}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-slate-300">{c.author?.full_name ?? 'Unknown'}</span>
+                  <span className="text-xs font-medium text-slate-300">{c.author?.full_name ?? 'Unbekannt'}</span>
                   <div className="flex items-center gap-2">
-                    {c.is_internal && <span className="badge bg-amber-500/15 border-amber-500/30 text-amber-300 text-[10px]">Internal</span>}
+                    {c.is_internal && <span className="badge bg-amber-500/15 border-amber-500/30 text-amber-300 text-[10px]">Intern</span>}
                     <span className="text-[10px] text-slate-500">{timeAgo(c.created_at)}</span>
                   </div>
                 </div>
                 <p className="mt-1 text-sm text-slate-400">{c.comment}</p>
               </div>
             ))}
-            {comments.length === 0 && <p className="text-xs text-slate-500">No comments yet</p>}
+            {comments.length === 0 && <p className="text-xs text-slate-500">Noch keine Kommentare</p>}
           </div>
           <div className="space-y-2">
-            <textarea className="input min-h-[60px]" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment..." />
+            <textarea className="input min-h-[60px]" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Kommentar hinzufuegen..." />
             <div className="flex items-center justify-between">
-              {isStaff && <label className="flex items-center gap-2 text-xs text-slate-400"><input type="checkbox" checked={isInternal} onChange={(e) => setIsInternal(e.target.checked)} className="rounded" /> Internal comment</label>}
-              <button onClick={addComment} className="btn-primary text-xs"><Send className="h-3.5 w-3.5" /> Post Comment</button>
+              {isStaff && <label className="flex items-center gap-2 text-xs text-slate-400"><input type="checkbox" checked={isInternal} onChange={(e) => setIsInternal(e.target.checked)} className="rounded" /> Interner Kommentar</label>}
+              <button onClick={addComment} className="btn-primary text-xs"><Send className="h-3.5 w-3.5" /> Kommentar senden</button>
             </div>
           </div>
         </div>
       </div>
 
-      <Modal open={escalateModal.open} onClose={escalateModal.closeModal} title="Escalate Ticket" size="sm"
-        footer={<><button className="btn-secondary" onClick={escalateModal.closeModal}>Cancel</button><button className="btn-danger" onClick={escalate}><ArrowUp className="h-4 w-4" /> Escalate Now</button></>}>
-        <p className="text-sm text-slate-300">Escalating this ticket will mark it as high priority and notify administrators. This should be used for urgent issues that need immediate attention.</p>
+      <Modal open={escalateModal.open} onClose={escalateModal.closeModal} title="Ticket eskalieren" size="sm"
+        footer={<><button className="btn-secondary" onClick={escalateModal.closeModal}>Abbrechen</button><button className="btn-danger" onClick={escalate}><ArrowUp className="h-4 w-4" /> Jetzt eskalieren</button></>}>
+        <p className="text-sm text-slate-300">Die Eskalation dieses Tickets markiert es als hohe Prioritaet und benachrichtigt Administratoren. Fuer dringende Probleme verwenden, die sofortige Aufmerksamkeit erfordern.</p>
       </Modal>
     </Modal>
   );

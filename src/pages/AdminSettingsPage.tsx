@@ -44,23 +44,23 @@ export function AdminSettingsPage() {
     const { error } = await supabase.from('ticket_categories').update({ is_enabled: !cat.is_enabled }).eq('id', cat.id);
     if (error) { toast(error.message, 'error'); return; }
     setCategories(categories.map((c) => c.id === cat.id ? { ...c, is_enabled: !c.is_enabled } : c));
-    toast('Category updated', 'success');
+    toast('Kategorie aktualisiert', 'success');
   };
 
-  if (loading) return <LoadingScreen message="Loading settings..." />;
+  if (loading) return <LoadingScreen message="Einstellungen werden geladen..." />;
 
   const tabs = [
-    { id: 'general' as const, label: 'General', icon: Settings },
-    { id: 'security' as const, label: 'Security', icon: Shield },
-    { id: 'wifi' as const, label: 'Wi-Fi', icon: Wifi },
-    { id: 'printing' as const, label: '3D Printing', icon: Printer },
+    { id: 'general' as const, label: 'Allgemein', icon: Settings },
+    { id: 'security' as const, label: 'Sicherheit', icon: Shield },
+    { id: 'wifi' as const, label: 'WLAN', icon: Wifi },
+    { id: 'printing' as const, label: '3D-Druck', icon: Printer },
     { id: 'tickets' as const, label: 'Tickets', icon: Sliders },
-    { id: 'inventory' as const, label: 'Inventory', icon: Boxes },
+    { id: 'inventory' as const, label: 'Inventar', icon: Boxes },
   ];
 
   return (
     <div className="space-y-5">
-      <PageHeader title="System Settings" subtitle="Centralized configuration management" />
+      <PageHeader title="Systemeinstellungen" subtitle="Zentrale Konfigurationsverwaltung" />
 
       <div className="flex gap-1 border-b border-slate-800 overflow-x-auto scrollbar-thin">
         {tabs.map((t) => (
@@ -72,14 +72,14 @@ export function AdminSettingsPage() {
 
       {tab === 'general' && (
         <div className="space-y-4">
-          <SettingCard title="Organization" icon={Settings}>
-            <SettingInput label="Organization Name" value={orgName} onChange={setOrgName} />
+          <SettingCard title="Organisation" icon={Settings}>
+            <SettingInput label="Name der Organisation" value={orgName} onChange={setOrgName} />
           </SettingCard>
-          <SettingCard title="Lesson Schedule" icon={Clock}>
+          <SettingCard title="Stundenplan" icon={Clock}>
             <div className="grid grid-cols-3 gap-4">
-              <SettingInput label="Lesson Start Time" value={lessonStart} onChange={setLessonStart} />
-              <SettingInput label="Lesson Duration (min)" type="number" value={lessonDuration} onChange={setLessonDuration} />
-              <SettingInput label="Break Duration (min)" type="number" value={lessonBreak} onChange={setLessonBreak} />
+              <SettingInput label="Beginn erste Stunde" value={lessonStart} onChange={setLessonStart} />
+              <SettingInput label="Stundendauer (Min.)" type="number" value={lessonDuration} onChange={setLessonDuration} />
+              <SettingInput label="Pausendauer (Min.)" type="number" value={lessonBreak} onChange={setLessonBreak} />
             </div>
           </SettingCard>
         </div>
@@ -87,32 +87,32 @@ export function AdminSettingsPage() {
 
       {tab === 'security' && (
         <div className="space-y-4">
-          <SettingCard title="Auto-Logout" icon={Shield}>
-            <SettingInput label="Inactivity Timeout (minutes)" type="number" value={autoLogoutMinutes} onChange={setAutoLogoutMinutes} />
-            <SettingToggle label="Admins exempt from auto-logout" value={autoLogoutAdminExempt} onChange={setAutoLogoutAdminExempt} />
+          <SettingCard title="Auto-Sperre" icon={Shield}>
+            <SettingInput label="Inaktivitaets-Timeout (Minuten)" type="number" value={autoLogoutMinutes} onChange={setAutoLogoutMinutes} />
+            <SettingToggle label="Administratoren von Auto-Sperre befreit" value={autoLogoutAdminExempt} onChange={setAutoLogoutAdminExempt} />
           </SettingCard>
-          <SettingCard title="Lending Security" icon={Shield}>
-            <SettingToggle label="Require signature on lending checkout" value={signatureRequired} onChange={setSignatureRequired} />
-            <SettingToggle label="Allow teachers to return devices themselves" value={teacherSelfReturn} onChange={setTeacherSelfReturn} />
+          <SettingCard title="Ausleihsicherheit" icon={Shield}>
+            <SettingToggle label="Unterschrift bei Ausleihe erforderlich" value={signatureRequired} onChange={setSignatureRequired} />
+            <SettingToggle label="Lehrer duerfen Geraete selbst zurueckgeben" value={teacherSelfReturn} onChange={setTeacherSelfReturn} />
           </SettingCard>
         </div>
       )}
 
       {tab === 'wifi' && (
-        <SettingCard title="Wi-Fi Thresholds" icon={Wifi}>
+        <SettingCard title="WLAN-Schwellwerte" icon={Wifi}>
           <div className="grid grid-cols-2 gap-4">
-            <SettingInput label="Good Signal (dBm)" type="number" value={wifiGood} onChange={setWifiGood} />
+            <SettingInput label="Gutes Signal (dBm)" type="number" value={wifiGood} onChange={setWifiGood} />
             <SettingInput label="OK Signal (dBm)" type="number" value={wifiOk} onChange={setWifiOk} />
-            <SettingInput label="Poor Signal (dBm)" type="number" value={wifiPoor} onChange={setWifiPoor} />
-            <SettingInput label="Min Download Speed (Mbps)" type="number" value={wifiMinDownload} onChange={setWifiMinDownload} />
+            <SettingInput label="Schlechtes Signal (dBm)" type="number" value={wifiPoor} onChange={setWifiPoor} />
+            <SettingInput label="Min. Download-Geschw. (Mbps)" type="number" value={wifiMinDownload} onChange={setWifiMinDownload} />
           </div>
         </SettingCard>
       )}
 
       {tab === 'printing' && (
-        <SettingCard title="3D Printing" icon={Printer}>
+        <SettingCard title="3D-Druck" icon={Printer}>
           <div>
-            <label className="label">Supported File Formats</label>
+            <label className="label">Unterstützte Dateiformate</label>
             <div className="flex flex-wrap gap-2">
               {['stl', 'obj', '3mf', 'gcode', 'ply', 'step'].map((fmt) => {
                 const enabled = supportedFormats.includes(fmt);
@@ -125,13 +125,13 @@ export function AdminSettingsPage() {
               })}
             </div>
           </div>
-          <SettingInput label="Max File Size (MB)" type="number" value={maxPrintSize} onChange={setMaxPrintSize} />
+          <SettingInput label="Max. Dateigroesse (MB)" type="number" value={maxPrintSize} onChange={setMaxPrintSize} />
         </SettingCard>
       )}
 
       {tab === 'tickets' && (
-        <SettingCard title="Ticket Categories" icon={Sliders}>
-          <p className="text-xs text-slate-400 mb-3">Enable or disable ticket categories. Disabled categories won't appear in the ticket creation form.</p>
+        <SettingCard title="Ticket-Kategorien" icon={Sliders}>
+          <p className="text-xs text-slate-400 mb-3">Ticket-Kategorien aktivieren oder deaktivieren. Deaktivierte Kategorien erscheinen nicht im Ticket-Erstellungsformular.</p>
           <div className="space-y-2">
             {categories.map((cat) => (
               <div key={cat.id} className="flex items-center justify-between rounded-lg border border-slate-800 p-3">
@@ -141,7 +141,7 @@ export function AdminSettingsPage() {
                 </div>
                 <button onClick={() => toggleCategory(cat)} className={cn('flex items-center gap-2 text-sm', cat.is_enabled ? 'text-emerald-400' : 'text-slate-500')}>
                   {cat.is_enabled ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
-                  {cat.is_enabled ? 'Enabled' : 'Disabled'}
+                  {cat.is_enabled ? 'Aktiviert' : 'Deaktiviert'}
                 </button>
               </div>
             ))}
@@ -151,9 +151,9 @@ export function AdminSettingsPage() {
 
       {tab === 'inventory' && (
         <div className="space-y-4">
-          <SettingCard title="Automation" icon={Cpu}>
-            <SettingToggle label="Enable AI workflow optimization suggestions" value={aiEnabled} onChange={setAiEnabled} />
-            <SettingToggle label="Send low-stock notifications" value={lowStockNotif} onChange={setLowStockNotif} />
+          <SettingCard title="Automatisierung" icon={Cpu}>
+            <SettingToggle label="KI-Workflow-Optimierungsvorschlaege aktivieren" value={aiEnabled} onChange={setAiEnabled} />
+            <SettingToggle label="Benachrichtigungen bei niedrigem Bestand senden" value={lowStockNotif} onChange={setLowStockNotif} />
           </SettingCard>
         </div>
       )}

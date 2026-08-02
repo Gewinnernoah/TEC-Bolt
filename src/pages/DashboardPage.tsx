@@ -64,15 +64,15 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Welcome, ${profile.full_name.split(' ')[0]}`}
-        subtitle="Real-time overview of the school's technology operations"
+        title={`Willkommen, ${profile.full_name.split(' ')[0]}`}
+        subtitle="Echtzeit-Ueberblick der Schul-Technik"
         actions={
           <div className="card px-4 py-2">
-            <div className="text-xs text-slate-400">Current Lesson</div>
+            <div className="text-xs text-slate-400">Aktuelle Stunde</div>
             <div className="flex items-center gap-2">
               <CircleDot className="h-4 w-4 text-blue-400 animate-pulse" />
               <span className="text-lg font-semibold text-slate-100">
-                {lesson.current > 0 && lesson.current <= lesson.total ? `Period ${lesson.current}` : 'Outside school hours'}
+                {lesson.current > 0 && lesson.current <= lesson.total ? `Stunde ${lesson.current}` : 'Ausserhalb der Schulzeiten'}
               </span>
             </div>
           </div>
@@ -95,15 +95,15 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
         <div className="flex items-center gap-2">
           <div className={cn('badge', stats.overdueLoans > 0 ? 'bg-red-500/15 border-red-500/30 text-red-300' : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300')}>
             <AlertTriangle className="h-3 w-3" />
-            {stats.overdueLoans} overdue
+            {stats.overdueLoans} ueberfaellig
           </div>
           <div className="badge bg-blue-500/15 border-blue-500/30 text-blue-300">
             <Activity className="h-3 w-3" />
-            {stats.activeLoans} active loans
+            {stats.activeLoans} aktive Ausleihen
           </div>
           {stats.pendingRequests > 0 && (
             <div className="badge bg-amber-500/15 border-amber-500/30 text-amber-300">
-              {stats.pendingRequests} pending requests
+              {stats.pendingRequests} ausstehende Anfragen
             </div>
           )}
         </div>
@@ -111,12 +111,12 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <StatCard icon={Package} label="Available Devices" value={stats.available} total={stats.totalDevices} color="emerald" onClick={() => onNavigate('inventory')} />
-        <StatCard icon={HandHelping} label="Active Loans" value={stats.activeLoans} color="blue" onClick={() => onNavigate('lending')} />
-        <StatCard icon={Printer} label="Print Jobs" value={stats.printingJobs} color="cyan" onClick={() => onNavigate('printing')} />
-        <StatCard icon={Ticket} label="Open Tickets" value={stats.openTickets} color="amber" onClick={() => onNavigate('tickets')} />
-        <StatCard icon={Wifi} label="Poor Wi-Fi" value={stats.poorWifi} color="red" onClick={() => onNavigate('monitoring')} />
-        <StatCard icon={Battery} label="Low Stock" value={stats.lowConsumables} color="orange" onClick={() => onNavigate('inventory')} />
+        <StatCard icon={Package} label="Verfuegbare Geraete" value={stats.available} total={stats.totalDevices} color="emerald" onClick={() => onNavigate('inventory')} />
+        <StatCard icon={HandHelping} label="Aktive Ausleihen" value={stats.activeLoans} color="blue" onClick={() => onNavigate('lending')} />
+        <StatCard icon={Printer} label="Druckauftraege" value={stats.printingJobs} color="cyan" onClick={() => onNavigate('printing')} />
+        <StatCard icon={Ticket} label="Offene Tickets" value={stats.openTickets} color="amber" onClick={() => onNavigate('tickets')} />
+        <StatCard icon={Wifi} label="Schlechtes WLAN" value={stats.poorWifi} color="red" onClick={() => onNavigate('monitoring')} />
+        <StatCard icon={Battery} label="Niedriger Bestand" value={stats.lowConsumables} color="orange" onClick={() => onNavigate('inventory')} />
       </div>
 
       {/* Traffic-light system status */}
@@ -124,25 +124,25 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
         <StatusLight
           title="System / Server"
           status={stats.totalDevices > 0 ? 'green' : 'amber'}
-          detail={stats.totalDevices > 0 ? 'All systems operational' : 'Loading data...'}
+          detail={stats.totalDevices > 0 ? 'Alle Systeme betriebsbereit' : 'Daten werden geladen...'}
           icon={Activity}
         />
         <StatusLight
-          title="Wi-Fi Health"
+          title="WLAN-Zustand"
           status={stats.poorWifi === 0 ? 'green' : stats.poorWifi <= 2 ? 'amber' : 'red'}
-          detail={stats.poorWifi === 0 ? 'All rooms good' : `${stats.poorWifi} rooms need attention`}
+          detail={stats.poorWifi === 0 ? 'Alle Raeume in Ordnung' : `${stats.poorWifi} Raeume brauchen Aufmerksamkeit`}
           icon={Wifi}
         />
         <StatusLight
-          title="Lending"
+          title="Ausleihe"
           status={stats.overdueLoans === 0 ? 'green' : stats.overdueLoans <= 2 ? 'amber' : 'red'}
-          detail={stats.overdueLoans === 0 ? `${stats.activeLoans} active, no overdue` : `${stats.overdueLoans} overdue loans`}
+          detail={stats.overdueLoans === 0 ? `${stats.activeLoans} aktiv, keine ueberfaelligen` : `${stats.overdueLoans} ueberfaellige Ausleihen`}
           icon={HandHelping}
         />
         <StatusLight
           title="Tickets"
           status={stats.openTickets === 0 ? 'green' : stats.openTickets <= 3 ? 'amber' : 'red'}
-          detail={stats.openTickets === 0 ? 'All resolved' : `${stats.openTickets} open tickets`}
+          detail={stats.openTickets === 0 ? 'Alle geloest' : `${stats.openTickets} offene Tickets`}
           icon={Ticket}
         />
       </div>
@@ -151,12 +151,12 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
         {/* Active loans */}
         <div className="card">
           <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-            <h3 className="text-sm font-semibold text-slate-200">Active Loans</h3>
-            <button onClick={() => onNavigate('lending')} className="text-xs text-blue-400 hover:underline">View all</button>
+            <h3 className="text-sm font-semibold text-slate-200">Aktive Ausleihen</h3>
+            <button onClick={() => onNavigate('lending')} className="text-xs text-blue-400 hover:underline">Alle ansehen</button>
           </div>
           <div className="scrollbar-thin max-h-80 overflow-y-auto">
             {(loans ?? []).length === 0 ? (
-              <EmptyState icon={HandHelping} title="No active loans" />
+              <EmptyState icon={HandHelping} title="Keine aktiven Ausleihen" />
             ) : (
               (loans ?? []).slice(0, 8).map((loan) => <LoanRow key={loan.id} loan={loan} />)
             )}
@@ -166,12 +166,12 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
         {/* Print jobs */}
         <div className="card">
           <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-            <h3 className="text-sm font-semibold text-slate-200">3D Print Queue</h3>
-            <button onClick={() => onNavigate('printing')} className="text-xs text-blue-400 hover:underline">View all</button>
+            <h3 className="text-sm font-semibold text-slate-200">3D-Druck-Warteschlange</h3>
+            <button onClick={() => onNavigate('printing')} className="text-xs text-blue-400 hover:underline">Alle ansehen</button>
           </div>
           <div className="scrollbar-thin max-h-80 overflow-y-auto">
             {(printRequests ?? []).filter((p) => p.status === 'printing' || p.status === 'queued').length === 0 ? (
-              <EmptyState icon={Printer} title="No active print jobs" />
+              <EmptyState icon={Printer} title="Keine aktiven Druckauftraege" />
             ) : (
               (printRequests ?? []).filter((p) => p.status === 'printing' || p.status === 'queued').slice(0, 6).map((job) => <PrintRow key={job.id} job={job} />)
             )}
@@ -181,12 +181,12 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
         {/* Open tickets */}
         <div className="card">
           <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-            <h3 className="text-sm font-semibold text-slate-200">Open Tickets</h3>
-            <button onClick={() => onNavigate('tickets')} className="text-xs text-blue-400 hover:underline">View all</button>
+            <h3 className="text-sm font-semibold text-slate-200">Offene Tickets</h3>
+            <button onClick={() => onNavigate('tickets')} className="text-xs text-blue-400 hover:underline">Alle ansehen</button>
           </div>
           <div className="scrollbar-thin max-h-80 overflow-y-auto">
             {(tickets ?? []).length === 0 ? (
-              <EmptyState icon={Ticket} title="No open tickets" />
+              <EmptyState icon={Ticket} title="Keine offenen Tickets" />
             ) : (
               (tickets ?? []).slice(0, 8).map((ticket) => <TicketRow key={ticket.id} ticket={ticket} />)
             )}
@@ -196,27 +196,27 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
         {/* Urgent notifications */}
         <div className="card">
           <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-            <h3 className="text-sm font-semibold text-slate-200">Urgent Notifications</h3>
+            <h3 className="text-sm font-semibold text-slate-200">Dringende Benachrichtigungen</h3>
             <Zap className="h-4 w-4 text-amber-400" />
           </div>
           <div className="scrollbar-thin max-h-80 overflow-y-auto p-3 space-y-2">
             {stats.overdueLoans > 0 && (
-              <UrgentItem icon={AlertTriangle} color="red" title={`${stats.overdueLoans} overdue loans`} message="Devices need to be returned immediately" onClick={() => onNavigate('lending')} />
+              <UrgentItem icon={AlertTriangle} color="red" title={`${stats.overdueLoans} ueberfaellige Ausleihen`} message="Geraete muessen sofort zurueckgegeben werden" onClick={() => onNavigate('lending')} />
             )}
             {stats.pendingRequests > 0 && (
-              <UrgentItem icon={CalendarClock} color="amber" title={`${stats.pendingRequests} pending lending requests`} message="Awaiting staff approval" onClick={() => onNavigate('lending')} />
+              <UrgentItem icon={CalendarClock} color="amber" title={`${stats.pendingRequests} ausstehende Ausleihanfragen`} message="Wartet auf Genehmigung" onClick={() => onNavigate('lending')} />
             )}
             {stats.poorWifi > 0 && (
-              <UrgentItem icon={Wifi} color="red" title={`${stats.poorWifi} rooms with poor Wi-Fi`} message="Network issues detected" onClick={() => onNavigate('monitoring')} />
+              <UrgentItem icon={Wifi} color="red" title={`${stats.poorWifi} Raeume mit schlechtem WLAN`} message="Netzwerkprobleme erkannt" onClick={() => onNavigate('monitoring')} />
             )}
             {stats.lowConsumables > 0 && (
-              <UrgentItem icon={Battery} color="orange" title={`${stats.lowConsumables} consumables low on stock`} message="Reorder needed" onClick={() => onNavigate('inventory')} />
+              <UrgentItem icon={Battery} color="orange" title={`${stats.lowConsumables} Verbrauchsmaterialien mit niedrigem Bestand`} message="Nachbestellung noetig" onClick={() => onNavigate('inventory')} />
             )}
             {stats.defective > 0 && (
-              <UrgentItem icon={AlertTriangle} color="red" title={`${stats.defective} defective devices`} message="Require repair" onClick={() => onNavigate('inventory')} />
+              <UrgentItem icon={AlertTriangle} color="red" title={`${stats.defective} defekte Geraete`} message="Reparatur noetig" onClick={() => onNavigate('inventory')} />
             )}
             {stats.overdueLoans === 0 && stats.pendingRequests === 0 && stats.poorWifi === 0 && stats.lowConsumables === 0 && stats.defective === 0 && (
-              <EmptyState icon={TrendingUp} title="All clear" message="No urgent notifications" />
+              <EmptyState icon={TrendingUp} title="Alle in Ordnung" message="Keine dringenden Benachrichtigungen" />
             )}
           </div>
         </div>
@@ -225,7 +225,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
       {/* Device status breakdown */}
       <div className="card">
         <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-          <h3 className="text-sm font-semibold text-slate-200">Device Status Overview</h3>
+          <h3 className="text-sm font-semibold text-slate-200">Geraete-Status-Ueberblick</h3>
         </div>
         <div className="grid grid-cols-2 gap-4 p-5 md:grid-cols-5">
           {(Object.keys(DEVICE_STATUS_META) as Device['status'][]).map((status) => {
@@ -304,11 +304,11 @@ function LoanRow({ loan }: { loan: LendingLoan }) {
   return (
     <div className={cn('flex items-center justify-between px-5 py-2.5 border-b border-slate-800/50 hover:bg-slate-800/30', overdue && 'bg-red-950/20')}>
       <div className="min-w-0">
-        <div className="text-sm font-medium text-slate-200 truncate">{loan.teacher?.full_name ?? 'Unknown'}</div>
-        <div className="text-xs text-slate-500">{loan.items?.length ?? 0} device(s) · {loan.room?.name ?? 'No room'}</div>
+        <div className="text-sm font-medium text-slate-200 truncate">{loan.teacher?.full_name ?? 'Unbekannt'}</div>
+        <div className="text-xs text-slate-500">{loan.items?.length ?? 0} Geraet(e) · {loan.room?.name ?? 'Kein Raum'}</div>
       </div>
       <div className="text-right">
-        <div className={cn('text-xs', overdue ? 'text-red-400' : 'text-slate-400')}>Due {formatDateTime(loan.expected_return_at)}</div>
+        <div className={cn('text-xs', overdue ? 'text-red-400' : 'text-slate-400')}>Faellig {formatDateTime(loan.expected_return_at)}</div>
         <span className={cn('badge mt-0.5', LOAN_STATUS_META[loan.status].bg, LOAN_STATUS_META[loan.status].color, 'border-transparent')}>
           {LOAN_STATUS_META[loan.status].label}
         </span>
@@ -323,7 +323,7 @@ function PrintRow({ job }: { job: PrintRequest }) {
     <div className="flex items-center justify-between px-5 py-2.5 border-b border-slate-800/50 hover:bg-slate-800/30">
       <div className="min-w-0">
         <div className="text-sm font-medium text-slate-200 truncate">{job.file_name}</div>
-        <div className="text-xs text-slate-500">{job.teacher?.full_name ?? 'Unknown'} · {job.filament_material} {job.filament_color}</div>
+        <div className="text-xs text-slate-500">{job.teacher?.full_name ?? 'Unbekannt'} · {job.filament_material} {job.filament_color}</div>
       </div>
       <div className="text-right">
         {job.status === 'printing' && (

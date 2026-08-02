@@ -1,13 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Menu, X, LogOut, Bell, Fingerprint, ChevronDown, Shield, Monitor, Lock,
+  Menu, X, LogOut, Bell, Fingerprint, ChevronDown, Shield, Monitor, Lock, Home,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { NAV_ITEMS, GROUP_LABELS, type NavItem } from '@/lib/nav';
 import { ROLE_META } from '@/lib/constants';
 import { cn, initials } from '@/lib/utils';
 import { NotificationsDropdown } from './NotificationsDropdown';
+import { navigateTo } from '@/lib/router';
 
 interface AppShellProps {
   current: string;
@@ -35,7 +36,7 @@ export function AppShell({ current, onNavigate, children }: AppShellProps) {
         </div>
         <div>
           <div className="text-sm font-semibold text-slate-100">TEC Hub</div>
-          <div className="text-[10px] text-slate-500">School Inventory Platform</div>
+          <div className="text-[10px] text-slate-500">Schul-Inventarplattform</div>
         </div>
       </div>
 
@@ -67,11 +68,18 @@ export function AppShell({ current, onNavigate, children }: AppShellProps) {
 
       <div className="border-t border-slate-800 p-3">
         <button
+          onClick={() => navigateTo('landing')}
+          className="sidebar-link w-full text-slate-500 hover:text-blue-400"
+        >
+          <Home className="h-4 w-4" />
+          <span>Zur Hauptseite</span>
+        </button>
+        <button
           onClick={() => onNavigate('tec-room')}
           className="sidebar-link w-full text-slate-500 hover:text-cyan-400"
         >
           <Monitor className="h-4 w-4" />
-          <span>TEC Room Display</span>
+          <span>TEC-Raum-Anzeige</span>
         </button>
       </div>
     </div>
@@ -145,7 +153,7 @@ export function AppShell({ current, onNavigate, children }: AppShellProps) {
                     </div>
                     {profile.fingerprint_enrolled && (
                       <div className="px-3 py-2 flex items-center gap-2 text-xs text-emerald-400">
-                        <Fingerprint className="h-4 w-4" /> Fingerprint enrolled
+                        <Fingerprint className="h-4 w-4" /> Fingerabdruck registriert
                       </div>
                     )}
                     <button onClick={() => { lock(); }} className="sidebar-link w-full text-amber-400 hover:bg-amber-950/30">

@@ -29,42 +29,42 @@ export function AdminLogsPage() {
   });
 
   const exportLogs = () => {
-    const csv = ['Timestamp,User,Action,Entity Type,Entity ID,Details'];
+    const csv = ['Zeitstempel,Benutzer,Aktion,Entitaetstyp,Entitaet-ID,Details'];
     filtered.forEach((l) => {
       csv.push(`${l.created_at},${l.user?.full_name ?? 'System'},${l.action},${l.entity_type ?? ''},${l.entity_id ?? ''},${JSON.stringify(l.details)}`);
     });
     downloadFile(csv.join('\n'), 'activity-logs.csv', 'text/csv');
   };
 
-  if (loading) return <LoadingScreen message="Loading activity logs..." />;
+  if (loading) return <LoadingScreen message="Aktivitaetsprotokoll wird geladen..." />;
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Activity Logs & Audit Trail" subtitle={`${logs.length} recent actions logged`} actions={
-        <button onClick={exportLogs} className="btn-secondary"><Download className="h-4 w-4" /> Export CSV</button>
+      <PageHeader title="Aktivitaetsprotokoll & Audit-Trail" subtitle={`${logs.length} aktuelle Aktionen protokolliert`} actions={
+        <button onClick={exportLogs} className="btn-secondary"><Download className="h-4 w-4" /> CSV exportieren</button>
       } />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by action or user..." className="input pl-10" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nach Aktion oder Benutzer suchen..." className="input pl-10" />
         </div>
         <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} className="select w-auto">
-          <option value="all">All Actions</option>
+          <option value="all">Alle Aktionen</option>
           {actions.map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
       </div>
 
       <div className="card">
         <div className="scrollbar-thin max-h-[600px] overflow-y-auto">
-          {filtered.length === 0 ? <EmptyState icon={Monitor} title="No logs found" /> : (
+          {filtered.length === 0 ? <EmptyState icon={Monitor} title="Keine Protokolle gefunden" /> : (
             <table className="w-full">
               <thead className="bg-slate-900/50 sticky top-0">
                 <tr>
-                  <th className="table-header">Time</th>
-                  <th className="table-header">User</th>
-                  <th className="table-header">Action</th>
-                  <th className="table-header">Entity</th>
+                  <th className="table-header">Zeit</th>
+                  <th className="table-header">Benutzer</th>
+                  <th className="table-header">Aktion</th>
+                  <th className="table-header">Entitaet</th>
                   <th className="table-header">Details</th>
                 </tr>
               </thead>

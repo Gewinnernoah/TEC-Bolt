@@ -1,19 +1,18 @@
-// Unified database client — single entry point for the entire app.
+// Einheitlicher Datenbank-Client — zentraler Einstiegspunkt fuer die gesamte App.
 //
-// This module picks the correct backend based on VITE_DB_MODE:
-//   - 'sqlite'    → SQLite (sql.js WASM, persists to IndexedDB, fully offline)
-//   - 'supabase'  → Supabase (cloud Postgres + Auth + Realtime)
+// Dieses Modul waehlt das richtige Backend anhand von VITE_DB_MODE:
+//   - 'supabase'  → PostgreSQL (Standard, cloud oder lokal)
+//   - 'sqlite'    → SQLite (Offline-Modus, sql.js WASM, IndexedDB)
 //
-// To switch backends, change VITE_DB_MODE in .env — no code changes needed.
-// All pages import `supabase` from here, so the backend is transparent.
+// Um das Backend zu wechseln, VITE_DB_MODE in .env aendern — keine Code-Aenderungen noetig.
 //
-// Exports:
-//   supabase  — the client (sync proxy that delegates after dbReady)
-//   db        — alias for supabase
-//   dbReady   — Promise that resolves once the client is initialized
-//   getDb()   — sync getter (throws if not ready; use inside dbReady-gated components)
-//   DB_MODE   — current mode string ('sqlite' | 'supabase')
-//   IS_SQLITE / IS_SUPABASE — boolean flags
+// Exporte:
+//   supabase  — der Client (Sync-Proxy, delegiert nach dbReady)
+//   db        — Alias fuer supabase
+//   dbReady   — Promise, das aufloest sobald der Client bereit ist
+//   getDb()   — Sync-Getter (wirft, wenn nicht bereit; in dbReady-gated Komponenten verwenden)
+//   DB_MODE   — aktueller Modus ('sqlite' | 'supabase')
+//   IS_SQLITE / IS_SUPABASE — boolesche Flags
 
 import { dbLog, logInit } from './logger';
 
@@ -25,6 +24,7 @@ export type DbMode = 'supabase' | 'sqlite';
 export function getDbMode(): DbMode {
   const mode = import.meta.env.VITE_DB_MODE as string | undefined;
   if (mode === 'sqlite') return 'sqlite';
+  // Default: PostgreSQL (via Supabase)
   return 'supabase';
 }
 
@@ -39,16 +39,16 @@ let _client: AnyClient | null = null;
 const dbReady: Promise<AnyClient> = (async () => {
   let c: AnyClient;
   if (IS_SQLITE) {
-    logInit('Mode: SQLite (offline)');
+    logInit('Modus: SQLite (Offline)');
     const mod = await import('./sqlite-adapter');
     c = await mod.createSqliteClient();
   } else {
-    logInit('Mode: Supabase (cloud)');
+    logInit('Modus: PostgreSQL / Supabase');
     const mod = await import('./supabase-adapter');
     c = mod.supabase;
   }
   _client = c;
-  logInit(`Client ready (${DB_MODE})`);
+  logInit(`Client bereit (${DB_MODE})`);
   return c;
 })();
 

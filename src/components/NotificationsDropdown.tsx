@@ -66,16 +66,16 @@ export function NotificationsDropdown({ onClose }: { onClose: () => void }) {
       <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-slate-400" />
-          <span className="text-sm font-medium text-slate-200">Notifications</span>
-          {unread > 0 && <span className="badge bg-blue-500/15 border-blue-500/30 text-blue-300">{unread} new</span>}
+          <span className="text-sm font-medium text-slate-200">Benachrichtigungen</span>
+          {unread > 0 && <span className="badge bg-blue-500/15 border-blue-500/30 text-blue-300">{unread} neu</span>}
         </div>
-        <button onClick={markAllRead} className="text-xs text-blue-400 hover:underline">Mark all read</button>
+        <button onClick={markAllRead} className="text-xs text-blue-400 hover:underline">Alle als gelesen markieren</button>
       </div>
       <div className="scrollbar-thin max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="py-8 text-center text-sm text-slate-500">Loading...</div>
+          <div className="py-8 text-center text-sm text-slate-500">Wird geladen...</div>
         ) : notifications.length === 0 ? (
-          <div className="py-8 text-center text-sm text-slate-500">No notifications</div>
+          <div className="py-8 text-center text-sm text-slate-500">Keine Benachrichtigungen</div>
         ) : (
           notifications.map((n) => (
             <div

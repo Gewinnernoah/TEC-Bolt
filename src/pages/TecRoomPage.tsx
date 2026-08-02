@@ -79,7 +79,7 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
   return (
     <div className="fixed inset-0 z-50 bg-[#050810] overflow-hidden">
       {/* Exit button (top-right, small) */}
-      <button onClick={onExit} className="absolute right-3 top-3 z-50 btn-icon text-slate-600 hover:text-slate-300" title="Exit (click to exit)">
+      <button onClick={onExit} className="absolute right-3 top-3 z-50 btn-icon text-slate-600 hover:text-slate-300" title="Beenden (Klick zum Beenden)">
         <X className="h-5 w-5" />
       </button>
 
@@ -92,15 +92,15 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
                 <Server className="h-7 w-7 text-white" />
               </div>
               <div>
-                <div className="text-lg font-bold text-slate-100">TEC Room Monitor</div>
-                <div className="text-xs text-slate-500">School Technology Operations Center</div>
+                <div className="text-lg font-bold text-slate-100">TEC-Raum-Monitor</div>
+                <div className="text-xs text-slate-500">Schul-Technik-Betriebszentrale</div>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <CircleDot className="h-5 w-5 text-blue-400 animate-pulse" />
               <div>
-                <div className="text-sm font-semibold text-slate-200">{lesson.current > 0 && lesson.current <= lesson.total ? `Period ${lesson.current} / ${lesson.total}` : 'Outside School Hours'}</div>
-                <div className="text-xs text-slate-500">Current Lesson</div>
+                <div className="text-sm font-semibold text-slate-200">{lesson.current > 0 && lesson.current <= lesson.total ? `Stunde ${lesson.current} / ${lesson.total}` : 'Ausserhalb der Schulzeiten'}</div>
+                <div className="text-xs text-slate-500">Aktuelle Stunde</div>
               </div>
             </div>
           </div>
@@ -117,16 +117,16 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
 
         {/* Traffic lights */}
         <div className="grid grid-cols-4 gap-3 flex-shrink-0">
-          <TrafficLight icon={Server} title="System Status" status={stats.totalDevices > 0 ? 'green' : 'amber'} detail={stats.totalDevices > 0 ? 'Operational' : 'Loading'} />
-          <TrafficLight icon={Wifi} title="Wi-Fi Health" status={stats.poorWifi === 0 ? 'green' : stats.poorWifi <= 2 ? 'amber' : 'red'} detail={`${stats.poorWifi} rooms poor`} />
-          <TrafficLight icon={HandHelping} title="Lending" status={stats.overdueLoans === 0 ? 'green' : stats.overdueLoans <= 2 ? 'amber' : 'red'} detail={`${stats.overdueLoans} overdue`} />
-          <TrafficLight icon={Ticket} title="Tickets" status={stats.openTickets === 0 ? 'green' : stats.openTickets <= 3 ? 'amber' : 'red'} detail={`${stats.openTickets} open`} />
+          <TrafficLight icon={Server} title="Systemstatus" status={stats.totalDevices > 0 ? 'green' : 'amber'} detail={stats.totalDevices > 0 ? 'Betriebsbereit' : 'Wird geladen'} />
+          <TrafficLight icon={Wifi} title="WLAN-Zustand" status={stats.poorWifi === 0 ? 'green' : stats.poorWifi <= 2 ? 'amber' : 'red'} detail={`${stats.poorWifi} Raeume kritisch`} />
+          <TrafficLight icon={HandHelping} title="Ausleihe" status={stats.overdueLoans === 0 ? 'green' : stats.overdueLoans <= 2 ? 'amber' : 'red'} detail={`${stats.overdueLoans} ueberfaellig`} />
+          <TrafficLight icon={Ticket} title="Tickets" status={stats.openTickets === 0 ? 'green' : stats.openTickets <= 3 ? 'amber' : 'red'} detail={`${stats.openTickets} offen`} />
         </div>
 
         {/* Main grid */}
         <div className="grid grid-cols-12 gap-3 flex-1 min-h-0">
           {/* Active loans */}
-          <Panel title="Active Loans" icon={HandHelping} count={stats.activeLoans} className="col-span-4 row-span-2">
+          <Panel title="Aktive Ausleihen" icon={HandHelping} count={stats.activeLoans} className="col-span-4 row-span-2">
             <div className="scrollbar-thin h-full overflow-y-auto space-y-1.5">
               {loans.slice(0, 10).map((loan) => {
                 const overdue = isOverdue(loan.expected_return_at);
@@ -136,16 +136,16 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
                       <span className="text-sm font-medium text-slate-200 truncate">{loan.teacher?.full_name ?? '—'}</span>
                       {overdue && <AlertTriangle className="h-4 w-4 text-red-400 flex-shrink-0" />}
                     </div>
-                    <div className="text-xs text-slate-500">{loan.items?.length ?? 0} device(s) · Due {formatDateTime(loan.expected_return_at)}</div>
+                    <div className="text-xs text-slate-500">{loan.items?.length ?? 0} Geraet(e) · Faellig {formatDateTime(loan.expected_return_at)}</div>
                   </div>
                 );
               })}
-              {loans.length === 0 && <div className="text-center text-sm text-slate-600 py-8">No active loans</div>}
+              {loans.length === 0 && <div className="text-center text-sm text-slate-600 py-8">Keine aktiven Ausleihen</div>}
             </div>
           </Panel>
 
           {/* Print jobs */}
-          <Panel title="Print Queue" icon={Printer} count={stats.printingJobs} className="col-span-4">
+          <Panel title="Druck-Warteschlange" icon={Printer} count={stats.printingJobs} className="col-span-4">
             <div className="scrollbar-thin h-full overflow-y-auto space-y-1.5">
               {prints.slice(0, 5).map((job) => (
                 <div key={job.id} className="rounded-lg border border-slate-800 bg-slate-900/30 p-2.5">
@@ -153,18 +153,18 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
                   <div className="text-xs text-slate-500">{job.teacher?.full_name ?? '—'} · {job.filament_material} {job.filament_color}</div>
                   {job.status === 'printing' && (
                     <div className="mt-1.5">
-                      <div className="flex justify-between text-xs"><span className="text-emerald-300">Layer {job.current_layer}/{job.total_layers}</span><span className="text-slate-400">{job.progress_pct}%</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-emerald-300">Schicht {job.current_layer}/{job.total_layers}</span><span className="text-slate-400">{job.progress_pct}%</span></div>
                       <div className="mt-1 h-1.5 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-emerald-400" style={{ width: `${job.progress_pct}%` }} /></div>
                     </div>
                   )}
                 </div>
               ))}
-              {prints.length === 0 && <div className="text-center text-sm text-slate-600 py-8">No active prints</div>}
+              {prints.length === 0 && <div className="text-center text-sm text-slate-600 py-8">Keine aktiven Drucke</div>}
             </div>
           </Panel>
 
           {/* Device status */}
-          <Panel title="Device Status" icon={Package} count={stats.totalDevices} className="col-span-4">
+          <Panel title="Geraete-Status" icon={Package} count={stats.totalDevices} className="col-span-4">
             <div className="grid grid-cols-5 gap-2 h-full items-center">
               {(Object.keys(DEVICE_STATUS_META) as Device['status'][]).map((status) => {
                 const count = devices.filter((d) => d.status === status).length;
@@ -182,7 +182,7 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
           </Panel>
 
           {/* Open tickets */}
-          <Panel title="Open Tickets" icon={Ticket} count={stats.openTickets} className="col-span-4">
+          <Panel title="Offene Tickets" icon={Ticket} count={stats.openTickets} className="col-span-4">
             <div className="scrollbar-thin h-full overflow-y-auto space-y-1.5">
               {tickets.slice(0, 6).map((ticket) => (
                 <div key={ticket.id} className={cn('rounded-lg border p-2.5', ticket.escalated ? 'border-red-500/30 bg-red-950/20' : 'border-slate-800 bg-slate-900/30')}>
@@ -193,38 +193,38 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
                   <div className="text-xs text-slate-500">{ticket.ticket_number} · {ticket.category?.name ?? ticket.category_key}</div>
                 </div>
               ))}
-              {tickets.length === 0 && <div className="text-center text-sm text-slate-600 py-8">No open tickets</div>}
+              {tickets.length === 0 && <div className="text-center text-sm text-slate-600 py-8">Keine offenen Tickets</div>}
             </div>
           </Panel>
 
           {/* Wi-Fi health */}
-          <Panel title="Wi-Fi Health" icon={Wifi} className="col-span-4">
+          <Panel title="WLAN-Zustand" icon={Wifi} className="col-span-4">
             <div className="space-y-1.5">
               <div className="grid grid-cols-4 gap-2 text-center">
-                <div className="rounded-lg bg-emerald-500/10 p-2"><div className="text-lg font-bold text-emerald-400">{Array.from(new Map(wifi.map((m) => [m.room_id, m])).values()).filter((m) => m.signal_strength_dbm >= -55).length}</div><div className="text-[10px] text-slate-500">Good</div></div>
+                <div className="rounded-lg bg-emerald-500/10 p-2"><div className="text-lg font-bold text-emerald-400">{Array.from(new Map(wifi.map((m) => [m.room_id, m])).values()).filter((m) => m.signal_strength_dbm >= -55).length}</div><div className="text-[10px] text-slate-500">Gut</div></div>
                 <div className="rounded-lg bg-amber-500/10 p-2"><div className="text-lg font-bold text-amber-400">{Array.from(new Map(wifi.map((m) => [m.room_id, m])).values()).filter((m) => m.signal_strength_dbm < -55 && m.signal_strength_dbm >= -67).length}</div><div className="text-[10px] text-slate-500">OK</div></div>
-                <div className="rounded-lg bg-orange-500/10 p-2"><div className="text-lg font-bold text-orange-400">{Array.from(new Map(wifi.map((m) => [m.room_id, m])).values()).filter((m) => m.signal_strength_dbm < -67 && m.signal_strength_dbm >= -75).length}</div><div className="text-[10px] text-slate-500">Poor</div></div>
-                <div className="rounded-lg bg-red-500/10 p-2"><div className="text-lg font-bold text-red-400">{Array.from(new Map(wifi.map((m) => [m.room_id, m])).values()).filter((m) => m.signal_strength_dbm < -75 || m.is_outage).length}</div><div className="text-[10px] text-slate-500">Critical</div></div>
+                <div className="rounded-lg bg-orange-500/10 p-2"><div className="text-lg font-bold text-orange-400">{Array.from(new Map(wifi.map((m) => [m.room_id, m])).values()).filter((m) => m.signal_strength_dbm < -67 && m.signal_strength_dbm >= -75).length}</div><div className="text-[10px] text-slate-500">Schlecht</div></div>
+                <div className="rounded-lg bg-red-500/10 p-2"><div className="text-lg font-bold text-red-400">{Array.from(new Map(wifi.map((m) => [m.room_id, m])).values()).filter((m) => m.signal_strength_dbm < -75 || m.is_outage).length}</div><div className="text-[10px] text-slate-500">Kritisch</div></div>
               </div>
               {stats.poorWifi > 0 && (
                 <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-2 text-xs text-red-300">
-                  <AlertTriangle className="inline h-3.5 w-3.5 mr-1" /> {stats.poorWifi} rooms with poor network quality
+                  <AlertTriangle className="inline h-3.5 w-3.5 mr-1" /> {stats.poorWifi} Raeume mit schlechter Netzwerkqualitaet
                 </div>
               )}
             </div>
           </Panel>
 
           {/* Urgent notifications */}
-          <Panel title="Urgent Notifications" icon={Zap} className="col-span-4">
+          <Panel title="Dringende Benachrichtigungen" icon={Zap} className="col-span-4">
             <div className="scrollbar-thin h-full overflow-y-auto space-y-1.5">
-              {stats.overdueLoans > 0 && <UrgentItem text={`${stats.overdueLoans} overdue loans need immediate return`} color="red" />}
-              {stats.escalatedTickets > 0 && <UrgentItem text={`${stats.escalatedTickets} escalated tickets need attention`} color="red" />}
-              {stats.poorWifi > 0 && <UrgentItem text={`${stats.poorWifi} rooms with Wi-Fi issues`} color="amber" />}
-              {stats.lowConsumables > 0 && <UrgentItem text={`${stats.lowConsumables} consumables low on stock`} color="orange" />}
-              {stats.defective > 0 && <UrgentItem text={`${stats.defective} defective devices need repair`} color="red" />}
-              {stats.maintenance > 0 && <UrgentItem text={`${stats.maintenance} devices in maintenance`} color="amber" />}
+              {stats.overdueLoans > 0 && <UrgentItem text={`${stats.overdueLoans} ueberfaellige Ausleihen muessen zurueckgegeben werden`} color="red" />}
+              {stats.escalatedTickets > 0 && <UrgentItem text={`${stats.escalatedTickets} eskalierte Tickets brauchen Aufmerksamkeit`} color="red" />}
+              {stats.poorWifi > 0 && <UrgentItem text={`${stats.poorWifi} Raeume mit WLAN-Problemen`} color="amber" />}
+              {stats.lowConsumables > 0 && <UrgentItem text={`${stats.lowConsumables} Verbrauchsmaterialien mit niedrigem Bestand`} color="orange" />}
+              {stats.defective > 0 && <UrgentItem text={`${stats.defective} defekte Geraete brauchen Reparatur`} color="red" />}
+              {stats.maintenance > 0 && <UrgentItem text={`${stats.maintenance} Geraete in Wartung`} color="amber" />}
               {stats.overdueLoans === 0 && stats.escalatedTickets === 0 && stats.poorWifi === 0 && stats.lowConsumables === 0 && stats.defective === 0 && (
-                <div className="text-center text-sm text-emerald-400 py-8"><TrendingUp className="mx-auto h-6 w-6 mb-1" /> All systems clear</div>
+                <div className="text-center text-sm text-emerald-400 py-8"><TrendingUp className="mx-auto h-6 w-6 mb-1" /> Alle Systeme in Ordnung</div>
               )}
             </div>
           </Panel>

@@ -29,29 +29,29 @@ export function EventsPage() {
 
   useEffect(() => { load(); }, []);
 
-  if (loading) return <LoadingScreen message="Loading events..." />;
+  if (loading) return <LoadingScreen message="Events werden geladen..." />;
 
   const upcoming = events.filter((e) => new Date(e.start_at) >= new Date());
   const past = events.filter((e) => new Date(e.start_at) < new Date());
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Events & Auditorium Planning" subtitle="Plan events, manage technical prep, and coordinate teams" actions={
-        <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary"><Plus className="h-4 w-4" /> New Event</button>
+      <PageHeader title="Events & Audimax-Planung" subtitle="Events planen, technische Vorbereitung verwalten und Teams koordinieren" actions={
+        <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary"><Plus className="h-4 w-4" /> Neues Event</button>
       } />
 
       {upcoming.length === 0 ? (
-        <div className="card"><EmptyState icon={Mic2} title="No upcoming events" message="Create a new event to start planning" /></div>
+        <div className="card"><EmptyState icon={Mic2} title="Keine anstehenden Events" message="Neues Event erstellen, um mit der Planung zu beginnen" /></div>
       ) : (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-200">Upcoming Events</h3>
+          <h3 className="text-sm font-semibold text-slate-200">Anstehende Events</h3>
           {upcoming.map((event) => <EventCard key={event.id} event={event} onClick={() => setSelected(event)} onEdit={() => { setEditing(event); setShowForm(true); }} />)}
         </div>
       )}
 
       {past.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-400">Past Events</h3>
+          <h3 className="text-sm font-semibold text-slate-400">Vergangene Events</h3>
           {past.map((event) => <EventCard key={event.id} event={event} onClick={() => setSelected(event)} />)}
         </div>
       )}
@@ -79,7 +79,7 @@ function EventCard({ event, onClick, onEdit }: { event: SchoolEvent; onClick: ()
           {event.description && <p className="mt-1 text-xs text-slate-400 line-clamp-1">{event.description}</p>}
           {event.tasks && event.tasks.length > 0 && (
             <div className="mt-2 text-xs text-slate-500">
-              {event.tasks.filter((t) => t.is_completed).length}/{event.tasks.length} tasks completed
+              {event.tasks.filter((t) => t.is_completed).length}/{event.tasks.length} Aufgaben abgeschlossen
             </div>
           )}
         </button>
@@ -100,7 +100,7 @@ function EventFormModal({ event, rooms, onClose, onSaved }: { event: SchoolEvent
   const toast = useToast();
 
   const save = async () => {
-    if (!title) { toast('Title is required', 'error'); return; }
+    if (!title) { toast('Titel ist erforderlich', 'error'); return; }
     const { data: profileData } = await supabase.auth.getUser();
     const data: Record<string, unknown> = {
       title, description: description || null, event_type: eventType,
@@ -115,36 +115,36 @@ function EventFormModal({ event, rooms, onClose, onSaved }: { event: SchoolEvent
       if (error) { toast(error.message, 'error'); return; }
     }
     await logActivity('event.save', 'event', event?.id);
-    toast('Event saved', 'success');
+    toast('Event gespeichert', 'success');
     onSaved();
   };
 
   return (
-    <Modal open onClose={onClose} title={event ? 'Edit Event' : 'New Event'} size="lg"
-      footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={save}>Save</button></>}>
+    <Modal open onClose={onClose} title={event ? 'Event bearbeiten' : 'Neues Event'} size="lg"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={save}>Speichern</button></>}>
       <div className="space-y-4">
-        <div><label className="label">Title *</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Winter Concert" /></div>
-        <div><label className="label">Description</label><textarea className="input min-h-[60px]" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+        <div><label className="label">Titel *</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="z.B. Winterkonzert" /></div>
+        <div><label className="label">Beschreibung</label><textarea className="input min-h-[60px]" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="label">Event Type</label>
+          <div><label className="label">Event-Typ</label>
             <select className="select" value={eventType} onChange={(e) => setEventType(e.target.value)}>
-              <option value="auditorium">Auditorium</option><option value="concert">Concert</option>
-              <option value="presentation">Presentation</option><option value="ceremony">Ceremony</option>
-              <option value="meeting">Meeting</option><option value="other">Other</option>
+              <option value="auditorium">Audimax</option><option value="concert">Konzert</option>
+              <option value="presentation">Praesentation</option><option value="ceremony">Feier</option>
+              <option value="meeting">Besprechung</option><option value="other">Sonstiges</option>
             </select>
           </div>
-          <div><label className="label">Room / Venue</label>
+          <div><label className="label">Raum / Veranstaltungsraum</label>
             <select className="select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-              <option value="">Select venue...</option>
+              <option value="">Veranstaltungsort auswaehlen...</option>
               {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number})</option>)}
             </select>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="label">Start</label><input type="datetime-local" className="input" value={startAt} onChange={(e) => setStartAt(e.target.value)} /></div>
-          <div><label className="label">End</label><input type="datetime-local" className="input" value={endAt} onChange={(e) => setEndAt(e.target.value)} /></div>
+          <div><label className="label">Beginn</label><input type="datetime-local" className="input" value={startAt} onChange={(e) => setStartAt(e.target.value)} /></div>
+          <div><label className="label">Ende</label><input type="datetime-local" className="input" value={endAt} onChange={(e) => setEndAt(e.target.value)} /></div>
         </div>
-        <div><label className="label">Notes</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+        <div><label className="label">Notizen</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
       </div>
     </Modal>
   );
@@ -206,18 +206,18 @@ function EventDetailModal({ event, onClose, onUpdated }: { event: SchoolEvent; o
       }>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <div className="card p-3"><div className="text-xs text-slate-500">Start</div><div className="text-sm text-slate-200">{formatDateTime(event.start_at)}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">End</div><div className="text-sm text-slate-200">{formatDateTime(event.end_at)}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Beginn</div><div className="text-sm text-slate-200">{formatDateTime(event.start_at)}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Ende</div><div className="text-sm text-slate-200">{formatDateTime(event.end_at)}</div></div>
         </div>
 
-        {event.description && <div className="card p-3"><div className="text-xs text-slate-500">Description</div><p className="mt-1 text-sm text-slate-300">{event.description}</p></div>}
+        {event.description && <div className="card p-3"><div className="text-xs text-slate-500">Beschreibung</div><p className="mt-1 text-sm text-slate-300">{event.description}</p></div>}
         {event.room && <div className="card p-3 flex items-center gap-2"><MapPin className="h-4 w-4 text-slate-400" /><span className="text-sm text-slate-300">{event.room.name}</span></div>}
 
         {/* Task management */}
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-semibold text-slate-200">Technical Preparation Tasks</h4>
-            <span className="badge bg-blue-500/15 border-blue-500/30 text-blue-300">{completedTasks}/{tasks.length} done</span>
+            <h4 className="text-sm font-semibold text-slate-200">Technische Vorbereitungsaufgaben</h4>
+            <span className="badge bg-blue-500/15 border-blue-500/30 text-blue-300">{completedTasks}/{tasks.length} erledigt</span>
           </div>
 
           {tasks.length > 0 && (
@@ -239,9 +239,9 @@ function EventDetailModal({ event, onClose, onUpdated }: { event: SchoolEvent; o
 
           <div className="space-y-2">
             <div className="flex gap-2">
-              <input className="input" value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTask()} placeholder="Add task..." />
+              <input className="input" value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTask()} placeholder="Aufgabe hinzufuegen..." />
               <select className="select w-auto" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
-                <option value="">Unassigned</option>
+                <option value="">Nicht zugewiesen</option>
                 {profiles.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
               </select>
               <button onClick={addTask} className="btn-primary"><Plus className="h-4 w-4" /></button>
@@ -252,7 +252,7 @@ function EventDetailModal({ event, onClose, onUpdated }: { event: SchoolEvent; o
         {/* Equipment plan */}
         {event.equipment_plan && event.equipment_plan.length > 0 && (
           <div className="card p-4">
-            <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200"><Package className="h-4 w-4" /> Equipment Plan</h4>
+            <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200"><Package className="h-4 w-4" /> Equipment-Plan</h4>
             <div className="space-y-1">
               {event.equipment_plan.map((item) => (
                 <div key={item.id} className="flex items-center justify-between text-xs">
@@ -267,7 +267,7 @@ function EventDetailModal({ event, onClose, onUpdated }: { event: SchoolEvent; o
         {/* Rehearsal schedule */}
         {event.rehearsal_schedule && event.rehearsal_schedule.length > 0 && (
           <div className="card p-4">
-            <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200"><Mic2 className="h-4 w-4" /> Rehearsal Schedule</h4>
+            <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200"><Mic2 className="h-4 w-4" /> Probenplan</h4>
             <div className="space-y-1">
               {event.rehearsal_schedule.map((slot) => (
                 <div key={slot.id} className="flex items-center gap-3 text-xs">

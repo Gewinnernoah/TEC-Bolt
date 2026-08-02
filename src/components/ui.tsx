@@ -5,7 +5,7 @@ export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={cn('h-5 w-5 animate-spin text-blue-400', className)} />;
 }
 
-export function LoadingScreen({ message = 'Loading...' }: { message?: string }) {
+export function LoadingScreen({ message = 'Wird geladen...' }: { message?: string }) {
   return (
     <div className="flex h-full min-h-[400px] flex-col items-center justify-center gap-3">
       <Spinner className="h-8 w-8" />

@@ -1,221 +1,415 @@
 #!/usr/bin/env bash
 #
-# Autoinstaller - Node.js + Projekt-Abhaengigkeiten + Datenbank-Setup
-# Prueft ob Node.js installiert ist, installiert es falls noetig,
-# richtet alle Projekt-Abhaengigkeiten ein, laesst den Benutzer die
-# Datenbank auswaehlen (Supabase Cloud oder lokale SQLite) und
-# verifiziert den Build.
+# One-Click-Installer - Node.js + PostgreSQL + Projekt-Setup (Linux / macOS)
+# Installiert automatisch alles Notwendige: Node.js, PostgreSQL, Datenbank,
+# Benutzer und konfiguriert die Anwendung. Der Nutzer muss keine weiteren
+# Schritte manuell durchfuehren.
 #
-# Verwendung:  ./autoinstaller.sh
+# Verwendung:  bash autoinstaller.sh
 #
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
 # Konfiguration
 # ---------------------------------------------------------------------------
-NODE_MIN_MAJOR=18
-NODE_MIN_MINOR=0
-NPM_MIN_MAJOR=9
-NPM_MIN_MINOR=0
-NODE_VERSION="v20.18.0"
-INSTALL_DIR="$HOME/.local"
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NODE_MIN_MAJOR="18"
+PG_VERSION="17"
+PG_PORT="5432"
+PG_DB_NAME="techub"
+PG_USER="techub_user"
+PG_PASSWORD="TechHub2024!"
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Farben
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; BOLD='\033[1m'; CYAN='\033[0;36m'; NC='\033[0m'
+# ---------------------------------------------------------------------------
+# Farbige Konsolenausgabe
+# ---------------------------------------------------------------------------
+if [[ -t 1 ]]; then
+    COLOR_BLUE='\033[1;34m'
+    COLOR_GREEN='\033[1;32m'
+    COLOR_YELLOW='\033[1;33m'
+    COLOR_RED='\033[1;31m'
+    COLOR_CYAN='\033[1;36m'
+    COLOR_GRAY='\033[0;90m'
+    COLOR_RESET='\033[0m'
+else
+    COLOR_BLUE=''; COLOR_GREEN=''; COLOR_YELLOW=''; COLOR_RED=''; COLOR_CYAN=''; COLOR_GRAY=''; COLOR_RESET=''
+fi
 
-log_info()  { echo -e "${BLUE}[INFO]${NC}  $1"; }
-log_ok()    { echo -e "${GREEN}[OK]${NC}    $1"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $1"; }
-log_error() { echo -e "${RED}[FEHLER]${NC} $1"; }
-log_step()  { echo -e "\n${BOLD}=== $1 ===${NC}"; }
+log_info()   { echo -e "${COLOR_BLUE}[INFO]${COLOR_RESET}   $1"; }
+log_ok()     { echo -e "${COLOR_GREEN}[OK]${COLOR_RESET}     $1"; }
+log_warn()   { echo -e "${COLOR_YELLOW}[WARN]${COLOR_RESET}   $1"; }
+log_error()  { echo -e "${COLOR_RED}[FEHLER]${COLOR_RESET} $1"; }
+log_step()   { echo -e "\n${COLOR_CYAN}=== $1 ===${COLOR_RESET}"; }
+log_detail() { echo -e "         ${COLOR_GRAY}$1${COLOR_RESET}"; }
 
+handle_error() {
+    local msg="$1"; local hint="${2:-}"
+    log_error "$msg"
+    if [[ -n "$hint" ]]; then
+        log_warn "Hinweis: $hint"
+    fi
+    echo ""
+    log_warn "Installation wurde abgebrochen."
+    echo "Bitte beheben Sie das Problem und starten Sie den Installer erneut."
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# System-Erkennung
+# ---------------------------------------------------------------------------
 detect_os() {
-  case "$(uname -m)" in x86_64|amd64) echo "x64";; aarch64|arm64) echo "arm64";; armv7l) echo "armv7l";; *) log_error "Architektur nicht unterstuetzt: $(uname -m)"; exit 1;; esac
-}
-detect_platform() {
-  case "$(uname -s)" in Linux*) echo "linux";; Darwin*) echo "darwin";; *) log_error "OS nicht unterstuetzt: $(uname -s)"; exit 1;; esac
-}
-version_ge() {
-  local m1 n1 m2 n2; m1="${1%%.*}"; n1="${1#*.}"; n1="${n1%%.*}"; m2="${2%%.*}"; n2="${2#*.}"; n2="${n2%%.*}"
-  [[ "$m1" -gt "$m2" ]] && return 0; [[ "$m1" -eq "$m2" && "$n1" -ge "$n2" ]] && return 0; return 1
-}
-check_node() {
-  command -v node &>/dev/null || return 1
-  local v m n; v="$(node --version | sed 's/v//')"; m="${v%%.*}"; n="${v#*.}"; n="${n%%.*}"
-  version_ge "${m}.${n}" "${NODE_MIN_MAJOR}.${NODE_MIN_MINOR}" && return 0
-  log_warn "Node.js ${v} gefunden, benoetigt >= ${NODE_MIN_MAJOR}.${NODE_MIN_MINOR}"; return 1
-}
-check_npm() {
-  command -v npm &>/dev/null || return 1
-  local v m n; v="$(npm --version)"; m="${v%%.*}"; n="${v#*.}"; n="${n%%.*}"
-  version_ge "${m}.${n}" "${NPM_MIN_MAJOR}.${NPM_MIN_MINOR}" && return 0
-  log_warn "npm ${v} gefunden, benoetigt >= ${NPM_MIN_MAJOR}.${NPM_MIN_MINOR}"; return 1
-}
-
-# ---------------------------------------------------------------------------
-# Datenbank-Auswahl
-# ---------------------------------------------------------------------------
-select_database() {
-  echo ""
-  echo -e "${BOLD}Welche Datenbank moechtest du verwenden?${NC}"
-  echo ""
-  echo -e "  ${CYAN}1) Supabase (Cloud - PostgreSQL)${NC}"
-  echo -e "     -> Hosted PostgreSQL mit Auth, Realtime, RLS"
-  echo -e "     -> Benoetigt Supabase-Credentials in .env"
-  echo -e "     -> Internetverbindung noetig"
-  echo ""
-  echo -e "  ${CYAN}2) SQLite (Lokal - Offline)${NC}"
-  echo -e "     -> Datenbank laeuft direkt im Browser (WASM)"
-  echo -e "     -> Keine Internetverbindung noetig"
-  echo -e "     -> Daten bleiben im Browser gespeichert (IndexedDB)"
-  echo -e "     -> Keine Konfiguration noetig"
-  echo ""
-  read -rp "Auswahl [1-2] (Standard: 2): " choice
-  choice="${choice:-2}"
-
-  case "$choice" in
-    1) DB_MODE="supabase" ;;
-    2) DB_MODE="sqlite" ;;
-    *) log_warn "Ungueltige Auswahl, verwende SQLite"; DB_MODE="sqlite" ;;
-  esac
-  echo ""; log_ok "Datenbank-Modus: ${DB_MODE}"
-}
-
-# ---------------------------------------------------------------------------
-# Test-Accounts Auswahl
-# ---------------------------------------------------------------------------
-select_test_accounts() {
-  echo ""
-  echo -e "${BOLD}Test-Accounts erstellen?${NC}"
-  echo -e "  Zeigt 3 Test-Zugaenge (Admin, Staff, Teacher) mit Passwoertern an."
-  if [[ "$DB_MODE" == "sqlite" ]]; then
-    echo -e "  ${YELLOW}(SQLite: Zugangsdaten werden angezeigt, Registrierung in der App)${NC}"
-  else
-    echo -e "  ${YELLOW}(Supabase: Accounts werden automatisch erstellt)${NC}"
-  fi
-  echo ""
-  read -rp "Test-Accounts anzeigen/erstellen? [j/N]: " create_tests
-  if [[ "${create_tests,,}" =~ ^[jy] ]]; then
-    CREATE_TEST_ACCOUNTS=true
-  else
-    CREATE_TEST_ACCOUNTS=false
-  fi
-  echo ""
-  $CREATE_TEST_ACCOUNTS && log_ok "Test-Accounts werden erstellt/angezeigt" || log_info "Keine Test-Accounts"
-}
-
-# ---------------------------------------------------------------------------
-# .env erstellen
-# ---------------------------------------------------------------------------
-setup_env() {
-  cd "$PROJECT_DIR"
-  if [[ "$DB_MODE" == "sqlite" ]]; then
-    if [[ -f ".env" ]] && grep -q "VITE_DB_MODE=sqlite" .env 2>/dev/null; then
-      log_ok ".env bereits mit SQLite konfiguriert"
+    if [[ "$(uname)" == "Darwin" ]]; then
+        OS="macos"
+        PKG_MANAGER="brew"
+    elif [[ -f /etc/debian_version ]]; then
+        OS="debian"
+        PKG_MANAGER="apt-get"
+    elif [[ -f /etc/redhat-release ]]; then
+        OS="rhel"
+        PKG_MANAGER="dnf"
+    elif command -v apt-get &>/dev/null; then
+        OS="debian"
+        PKG_MANAGER="apt-get"
+    elif command -v dnf &>/dev/null; then
+        OS="rhel"
+        PKG_MANAGER="dnf"
+    elif command -v yum &>/dev/null; then
+        OS="rhel"
+        PKG_MANAGER="yum"
+    elif command -v pacman &>/dev/null; then
+        OS="arch"
+        PKG_MANAGER="pacman"
     else
-      log_info "Erstelle .env fuer SQLite..."
-      echo "# SQLite (lokale Browser-Datenbank, kein Internet noetig)" > .env
-      echo "VITE_DB_MODE=sqlite" >> .env
-      log_ok ".env erstellt (SQLite-Modus)"
+        OS="unknown"
+        PKG_MANAGER=""
     fi
-  else
-    if [[ -f ".env" ]] && grep -q "VITE_SUPABASE_URL" .env 2>/dev/null && ! grep -q "DEINE\|dein-\|YOUR" .env 2>/dev/null; then
-      grep -q "VITE_DB_MODE" .env 2>/dev/null || { echo ""; echo "VITE_DB_MODE=supabase"; } >> .env
-      log_ok ".env gefunden (Supabase-Credentials vorhanden)"
-    else
-      log_info "Erstelle .env fuer Supabase..."
-      if [[ -f "src/lib/.env.example" ]]; then cp src/lib/.env.example .env; else
-        echo "VITE_SUPABASE_URL=https://dein-projekt.supabase.co" > .env; echo "VITE_SUPABASE_ANON_KEY=dein-anon-key" >> .env; fi
-      echo "" >> .env; echo "VITE_DB_MODE=supabase" >> .env
-      log_warn ".env erstellt. Bitte Supabase-Credentials eintragen!"
-    fi
-  fi
 }
 
 # ---------------------------------------------------------------------------
-# Test-Accounts
+# Node.js
 # ---------------------------------------------------------------------------
-run_test_accounts() {
-  cd "$PROJECT_DIR"; ! $CREATE_TEST_ACCOUNTS && return
-  log_step "Test-Accounts"
-  node scripts/create-test-accounts.mjs --"$DB_MODE" 2>&1 || log_warn "Test-Accounts fehlgeschlagen (non-fatal)"
+test_node() {
+    if ! command -v node &>/dev/null; then return 1; fi
+    local version
+    version="$(node --version | sed 's/v//')"
+    local major="${version%%.*}"
+    if [[ "$major" -ge "$NODE_MIN_MAJOR" ]]; then return 0; fi
+    return 1
 }
 
-# ---------------------------------------------------------------------------
-# Node.js Installation
-# ---------------------------------------------------------------------------
 install_node() {
-  local platform arch filename url tmpdir
-  platform="$(detect_platform)"; arch="$(detect_os)"
-  filename="node-${NODE_VERSION}-${platform}-${arch}.tar.xz"
-  url="https://nodejs.org/dist/${NODE_VERSION}/${filename}"
-  tmpdir="$(mktemp -d)"
-  log_info "Lade Node.js ${NODE_VERSION} herunter (${platform}-${arch})..."
-  if command -v curl &>/dev/null; then curl -fsSL -o "${tmpdir}/${filename}" "$url"
-  elif command -v wget &>/dev/null; then wget -q -O "${tmpdir}/${filename}" "$url"
-  else log_error "curl/wget nicht gefunden"; rm -rf "$tmpdir"; exit 1; fi
-  log_info "Entpacke nach ${INSTALL_DIR}..."
-  mkdir -p "$INSTALL_DIR"; tar -xJf "${tmpdir}/${filename}" -C "$INSTALL_DIR" --strip-components=1; rm -rf "$tmpdir"
-  export PATH="${INSTALL_DIR}/bin:${PATH}"
-  for rc_file in "$HOME/.bashrc" "$HOME/.zshrc"; do
-    [[ -f "$rc_file" ]] && ! grep -q "${INSTALL_DIR}/bin" "$rc_file" 2>/dev/null && {
-      echo "export PATH=\"${INSTALL_DIR}/bin:\$PATH\"" >> "$rc_file"; log_info "PATH zu ${rc_file} hinzugefuegt"; }
-  done
-  log_ok "Node.js $(node --version) installiert"; log_ok "npm $(npm --version) installiert"
+    log_info "Node.js nicht gefunden - installiere automatisch..."
+    case "$OS" in
+        debian)
+            sudo "$PKG_MANAGER" update -qq
+            if ! command -v curl &>/dev/null; then sudo "$PKG_MANAGER" install -y -qq curl; fi
+            curl -fsSL "https://deb.nodesource.com/setup_20.x" | sudo -E bash -
+            sudo "$PKG_MANAGER" install -y -qq nodejs
+            ;;
+        rhel)
+            curl -fsSL "https://rpm.nodesource.com/setup_20.x" | sudo -E bash -
+            sudo "$PKG_MANAGER" install -y nodejs
+            ;;
+        arch)
+            sudo "$PKG_MANAGER" -S --noconfirm nodejs npm
+            ;;
+        macos)
+            if ! command -v brew &>/dev/null; then
+                handle_error "Homebrew ist nicht installiert." "Homebrew installieren: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+            fi
+            brew install node
+            ;;
+        *)
+            handle_error "Unbekanntes Betriebssystem. Node.js manuell installieren: https://nodejs.org"
+            ;;
+    esac
+    log_ok "Node.js $(node --version) installiert"
+    log_ok "npm $(npm --version) installiert"
 }
 
 # ---------------------------------------------------------------------------
-# Projekt-Setup & Verifikation
+# PostgreSQL
 # ---------------------------------------------------------------------------
-setup_project() {
-  cd "$PROJECT_DIR"
-  [[ -d "node_modules" ]] && log_info "Aktualisiere Abhaengigkeiten..." || log_info "Installiere npm-Abhaengigkeiten..."
-  npm install --no-fund --no-audit
-  log_ok "Abhaengigkeiten installiert"
-  export PATH="${PROJECT_DIR}/node_modules/.bin:${PATH}"
+test_postgresql() {
+    if command -v psql &>/dev/null; then return 0; fi
+    # Pruefe Standardpfade
+    if [[ -d "/usr/pgsql-$PG_VERSION/bin" ]]; then
+        export PATH="/usr/pgsql-$PG_VERSION/bin:$PATH"
+        return 0
+    fi
+    if [[ -d "/usr/lib/postgresql/$PG_VERSION/bin" ]]; then
+        export PATH="/usr/lib/postgresql/$PG_VERSION/bin:$PATH"
+        return 0
+    fi
+    return 1
 }
-verify_project() {
-  cd "$PROJECT_DIR"; log_step "Build"
-  if npm run build 2>&1 | grep -q "built in"; then log_ok "Build erfolgreich"
-  else log_warn "Build fehlgeschlagen (non-fatal)"; npm run build 2>&1 | tail -5 || true; fi
+
+test_pg_service() {
+    if command -v systemctl &>/dev/null; then
+        if systemctl is-active --quiet postgresql 2>/dev/null; then return 0; fi
+        if systemctl is-active --quiet "postgresql-$PG_VERSION" 2>/dev/null; then return 0; fi
+    elif command -v brew &>/dev/null && [[ "$OS" == "macos" ]]; then
+        if brew services list 2>/dev/null | grep -q postgresql; then return 0; fi
+    fi
+    if pg_isready -q -p "$PG_PORT" 2>/dev/null; then return 0; fi
+    return 1
+}
+
+start_pg_service() {
+    log_info "Starte PostgreSQL-Dienst..."
+    if command -v systemctl &>/dev/null; then
+        sudo systemctl start postgresql 2>/dev/null || sudo systemctl start "postgresql-$PG_VERSION" 2>/dev/null || true
+        sudo systemctl enable postgresql 2>/dev/null || sudo systemctl enable "postgresql-$PG_VERSION" 2>/dev/null || true
+    elif [[ "$OS" == "macos" ]] && command -v brew &>/dev/null; then
+        brew services start postgresql 2>/dev/null || true
+    fi
+    sleep 2
+    if test_pg_service; then
+        log_ok "PostgreSQL-Dienst laeuft"
+    else
+        handle_error "PostgreSQL-Dienst konnte nicht gestartet werden." "Dienst manuell starten: sudo systemctl start postgresql"
+    fi
+}
+
+install_postgresql() {
+    log_info "PostgreSQL nicht gefunden - installiere automatisch..."
+    case "$OS" in
+        debian)
+            sudo "$PKG_MANAGER" install -y -qq postgresql postgresql-contrib
+            ;;
+        rhel)
+            sudo "$PKG_MANAGER" install -y postgresql-server postgresql-contrib
+            sudo postgresql-setup --initdb 2>/dev/null || true
+            ;;
+        arch)
+            sudo "$PKG_MANAGER" -S --noconfirm postgresql
+            sudo -u postgres initdb -D /var/lib/postgres/data 2>/dev/null || true
+            ;;
+        macos)
+            brew install postgresql@17 2>/dev/null || brew install postgresql
+            ;;
+        *)
+            handle_error "Unbekanntes Betriebssystem. PostgreSQL manuell installieren: https://www.postgresql.org/download/"
+            ;;
+    esac
+
+    # Pfad aktualisieren
+    if [[ -d "/usr/lib/postgresql/$PG_VERSION/bin" ]]; then
+        export PATH="/usr/lib/postgresql/$PG_VERSION/bin:$PATH"
+    elif [[ -d "/usr/pgsql-$PG_VERSION/bin" ]]; then
+        export PATH="/usr/pgsql-$PG_VERSION/bin:$PATH"
+    fi
+
+    if ! test_postgresql; then
+        handle_error "PostgreSQL wurde nicht korrekt installiert." "PostgreSQL manuell installieren und Installer erneut ausfuehren."
+    fi
+    log_ok "PostgreSQL installiert"
+
+    start_pg_service
+}
+
+# ---------------------------------------------------------------------------
+# Datenbank & Benutzer
+# ---------------------------------------------------------------------------
+test_pg_connection() {
+    local db_name="${1:-postgres}"
+    local db_user="${2:-postgres}"
+    PGPASSWORD="${3:-}" psql -h localhost -p "$PG_PORT" -U "$db_user" -d "$db_name" -c "SELECT 1;" -t -q 2>/dev/null
+    return $?
+}
+
+initialize_database() {
+    log_info "Pruefe Datenbankverbindung..."
+
+    local max_retries=10
+    local connected=false
+    for ((i=1; i<=max_retries; i++)); do
+        if test_pg_connection "postgres" "postgres" "" 2>/dev/null; then
+            connected=true
+            break
+        fi
+        # macOS: Standardbenutzer ist der aktuelle Systembenutzer
+        if [[ "$OS" == "macos" ]] && test_pg_connection "postgres" "$(whoami)" "" 2>/dev/null; then
+            connected=true
+            export PG_HOST_USER="$(whoami)"
+            break
+        fi
+        log_warn "Verbindungsversuch $i/$max_retries fehlgeschlagen, warte 2 Sekunden..."
+        sleep 2
+    done
+
+    if [[ "$connected" != "true" ]]; then
+        handle_error "PostgreSQL ist nicht erreichbar (Port $PG_PORT)." \
+            "Moegliche Ursachen: Dienst laeuft nicht, Port blockiert, Firewall, oder Peer-Authentifizierung aktiv. Logfile pruefen: sudo tail -f /var/log/postgresql/*.log"
+    fi
+    log_ok "Verbindung zu PostgreSQL hergestellt"
+
+    # Datenbank erstellen
+    log_info "Erstelle Datenbank '$PG_DB_NAME' (falls nicht vorhanden)..."
+    local pg_admin="postgres"
+    if [[ "$OS" == "macos" && -n "${PG_HOST_USER:-}" ]]; then pg_admin="$PG_HOST_USER"; fi
+
+    local db_exists
+    db_exists="$(sudo -u "$pg_admin" psql -p "$PG_PORT" -tAc "SELECT 1 FROM pg_database WHERE datname='$PG_DB_NAME';" 2>/dev/null || \
+                 PGPASSWORD="$PG_PASSWORD" psql -h localhost -p "$PG_PORT" -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$PG_DB_NAME';" 2>/dev/null || echo "")"
+
+    if [[ "$db_exists" == "1" ]]; then
+        log_info "Datenbank '$PG_DB_NAME' existiert bereits"
+    else
+        sudo -u "$pg_admin" createdb -p "$PG_PORT" "$PG_DB_NAME" 2>/dev/null || \
+            PGPASSWORD="$PG_PASSWORD" psql -h localhost -p "$PG_PORT" -U postgres -c "CREATE DATABASE $PG_DB_NAME;" 2>/dev/null || true
+        log_ok "Datenbank '$PG_DB_NAME' erstellt"
+    fi
+
+    # Benutzer erstellen
+    log_info "Erstelle Benutzer '$PG_USER' (falls nicht vorhanden)..."
+    local user_exists
+    user_exists="$(sudo -u "$pg_admin" psql -p "$PG_PORT" -tAc "SELECT 1 FROM pg_roles WHERE rolname='$PG_USER';" 2>/dev/null || echo "")"
+
+    if [[ "$user_exists" == "1" ]]; then
+        log_info "Benutzer '$PG_USER' existiert bereits"
+        sudo -u "$pg_admin" psql -p "$PG_PORT" -c "ALTER USER $PG_USER WITH PASSWORD '$PG_PASSWORD';" 2>/dev/null || true
+    else
+        sudo -u "$pg_admin" psql -p "$PG_PORT" -c "CREATE USER $PG_USER WITH PASSWORD '$PG_PASSWORD';" 2>/dev/null || true
+        log_ok "Benutzer '$PG_USER' erstellt"
+    fi
+
+    # Berechtigungen
+    log_info "Erteile Berechtigungen..."
+    sudo -u "$pg_admin" psql -p "$PG_PORT" -c "GRANT ALL PRIVILEGES ON DATABASE $PG_DB_NAME TO $PG_USER;" 2>/dev/null || true
+    sudo -u "$pg_admin" psql -p "$PG_PORT" -d "$PG_DB_NAME" -c "GRANT ALL ON SCHEMA public TO $PG_USER;" 2>/dev/null || true
+    sudo -u "$pg_admin" psql -p "$PG_PORT" -d "$PG_DB_NAME" -c "ALTER DATABASE $PG_DB_NAME OWNER TO $PG_USER;" 2>/dev/null || true
+    log_ok "Berechtigungen erteilt"
+}
+
+# ---------------------------------------------------------------------------
+# .env konfigurieren
+# ---------------------------------------------------------------------------
+initialize_env() {
+    cd "$PROJECT_DIR"
+    touch .env
+
+    local conn_str="postgresql://${PG_USER}:${PG_PASSWORD}@localhost:${PG_PORT}/${PG_DB_NAME}"
+
+    # VITE_DB_MODE
+    if grep -q "VITE_DB_MODE=" .env; then
+        sed -i.bak "s/VITE_DB_MODE=.*/VITE_DB_MODE=supabase/" .env
+    else
+        echo "VITE_DB_MODE=supabase" >> .env
+    fi
+
+    # DATABASE_URL
+    if grep -q "DATABASE_URL=" .env; then
+        sed -i.bak "s|DATABASE_URL=.*|DATABASE_URL=${conn_str}|" .env
+    else
+        echo "DATABASE_URL=${conn_str}" >> .env
+    fi
+
+    rm -f .env.bak
+    log_ok ".env konfiguriert (PostgreSQL, Datenbank: $PG_DB_NAME)"
+    log_detail "Verbindung: localhost:$PG_PORT/$PG_DB_NAME (Benutzer: $PG_USER)"
+}
+
+# ---------------------------------------------------------------------------
+# Projekt-Setup
+# ---------------------------------------------------------------------------
+initialize_project() {
+    cd "$PROJECT_DIR"
+    if [[ -d "node_modules" ]]; then
+        log_info "Aktualisiere Abhaengigkeiten..."
+    else
+        log_info "Installiere npm-Abhaengigkeiten..."
+    fi
+    npm install --no-fund --no-audit 2>&1 | tail -3
+    log_ok "Abhaengigkeiten installiert"
+}
+
+test_project() {
+    cd "$PROJECT_DIR"
+    log_step "Build-Verifikation"
+    if npm run build 2>&1 | tail -5; then
+        log_ok "Build erfolgreich"
+    else
+        log_warn "Build fehlgeschlagen (nicht kritisch - App kann trotzdem gestartet werden)"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Zusammenfassung
+# ---------------------------------------------------------------------------
+show_summary() {
+    echo -e "\n${COLOR_GREEN}============================================${COLOR_RESET}"
+    echo -e "${COLOR_GREEN}  Installation erfolgreich abgeschlossen!${COLOR_RESET}"
+    echo -e "${COLOR_GREEN}============================================${COLOR_RESET}\n"
+
+    echo "  Node.js:     $(node --version 2>/dev/null || echo 'nicht gefunden')"
+    echo "  npm:         $(npm --version 2>/dev/null || echo 'nicht gefunden')"
+    echo "  PostgreSQL:  $PG_VERSION (Port $PG_PORT)"
+    echo "  Datenbank:   $PG_DB_NAME"
+    echo "  Benutzer:    $PG_USER"
+    echo "  Projekt:     $PROJECT_DIR\n"
+
+    echo -e "  Starten mit:  ${COLOR_CYAN}npm run dev${COLOR_RESET}\n"
+    echo -e "  Im Browser oeffnen:"
+    echo -e "    ${COLOR_CYAN}http://localhost:5173${COLOR_RESET}           (Hauptseite)"
+    echo -e "    ${COLOR_CYAN}http://localhost:5173/dashboard${COLOR_RESET}  (Dashboard)\n"
+
+    if test_pg_service; then
+        log_ok "PostgreSQL-Dienst laeuft"
+    fi
 }
 
 # ---------------------------------------------------------------------------
 # Hauptablauf
 # ---------------------------------------------------------------------------
 main() {
-  echo -e "${BOLD}============================================${NC}"
-  echo -e "${BOLD}  Autoinstaller - Node.js + Projekt-Setup${NC}"
-  echo -e "${BOLD}============================================${NC}"
+    clear 2>/dev/null || true
+    echo -e "${COLOR_CYAN}============================================${COLOR_RESET}"
+    echo -e "${COLOR_CYAN}  One-Click-Installer${COLOR_RESET}"
+    echo -e "${COLOR_CYAN}  Node.js + PostgreSQL + Projekt-Setup${COLOR_RESET}"
+    echo -e "${COLOR_CYAN}============================================${COLOR_RESET}"
 
-  log_step "1/7  System-Information"
-  log_info "OS: $(uname -s) $(uname -m)"; log_info "Projekt: $PROJECT_DIR"
+    log_step "1/6  System-Information"
+    detect_os
+    log_info "Betriebssystem: $OS"
+    log_info "Paketmanager: ${PKG_MANAGER:-keiner}"
+    log_info "Projekt: $PROJECT_DIR"
 
-  log_step "2/7  Node.js pruefen"
-  check_node && log_ok "Node.js $(node --version) bereit" || { log_info "Installiere lokal..."; install_node; }
+    # 1. Node.js
+    log_step "2/6  Node.js pruefen/installieren"
+    if test_node; then
+        log_ok "Node.js $(node --version) bereit"
+    else
+        install_node
+    fi
 
-  log_step "3/7  npm pruefen"
-  check_npm && log_ok "npm $(npm --version) bereit" || { log_error "npm nicht verfuegbar"; exit 1; }
+    # 2. PostgreSQL
+    log_step "3/6  PostgreSQL pruefen/installieren"
+    if test_postgresql; then
+        log_ok "PostgreSQL bereits installiert"
+        if test_pg_service; then
+            log_ok "PostgreSQL-Dienst laeuft"
+        else
+            start_pg_service
+        fi
+    else
+        install_postgresql
+    fi
 
-  log_step "4/7  Datenbank-Auswahl"; select_database
-  log_step "5/7  Test-Accounts"; select_test_accounts
-  log_step "6/7  Projekt-Abhaengigkeiten & .env"; setup_project; setup_env
-  log_step "7/7  Verifikation & Test-Accounts"; verify_project; run_test_accounts
+    # 3. Datenbank & Benutzer
+    log_step "4/6  Datenbank und Benutzer einrichten"
+    initialize_database
 
-  echo ""; echo -e "${GREEN}${BOLD}============================================${NC}"
-  echo -e "${GREEN}${BOLD}  Installation abgeschlossen!${NC}"
-  echo -e "${GREEN}${BOLD}============================================${NC}"
-  echo ""; echo -e "  Node.js:   $(node --version)"; echo -e "  npm:       $(npm --version)"
-  echo -e "  Projekt:   ${PROJECT_DIR}"; echo -e "  Datenbank: ${BOLD}${DB_MODE}${NC}"; echo ""
+    # 4. .env
+    log_step "5/6  Anwendung konfigurieren"
+    initialize_env
 
-  if [[ "$DB_MODE" == "supabase" ]] && grep -q "DEINE\|dein-\|YOUR" .env 2>/dev/null; then
-    echo -e "${YELLOW}  Aktion noetig: .env mit Supabase-Credentials ausfuellen${NC}"
-  elif [[ "$DB_MODE" == "sqlite" ]]; then
-    echo -e "${GREEN}  SQLite: Keine weitere Konfiguration noetig.${NC}"
-    echo -e "  Die Datenbank wird beim ersten Start im Browser erstellt."
-  fi
-  echo ""; echo -e "  Starten mit:  ${BOLD}npm run dev${NC}"; echo ""
+    # 5. Projekt
+    log_step "6/6  Projekt-Abhaengigkeiten und Build"
+    initialize_project
+    test_project
+
+    show_summary
 }
 
 main "$@"

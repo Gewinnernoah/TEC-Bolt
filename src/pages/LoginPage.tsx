@@ -217,7 +217,7 @@ export function LoginPage({ locked = false }: { locked?: boolean }) {
             <Shield className="h-8 w-8 text-white" />
           </div>
           <h1 className="mt-4 text-2xl font-bold text-slate-100">School TEC Hub</h1>
-          <p className="mt-1 text-sm text-slate-400">Inventory, Lending & Technical Support Platform</p>
+          <p className="mt-1 text-sm text-slate-400">Inventar-, Ausleih- &amp; Technik-Support-Plattform</p>
         </div>
 
         <div className="card p-6">

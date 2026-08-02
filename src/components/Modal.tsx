@@ -53,12 +53,12 @@ interface ConfirmProps {
   danger?: boolean;
 }
 
-export function ConfirmDialog({ open, onClose, onConfirm, title, message, confirmLabel = 'Confirm', danger }: ConfirmProps) {
+export function ConfirmDialog({ open, onClose, onConfirm, title, message, confirmLabel = 'Bestätigen', danger }: ConfirmProps) {
   return (
     <Modal open={open} onClose={onClose} title={title} size="sm"
       footer={
         <>
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-secondary" onClick={onClose}>Abbrechen</button>
           <button className={danger ? 'btn-danger' : 'btn-primary'} onClick={() => { onConfirm(); onClose(); }}>{confirmLabel}</button>
         </>
       }

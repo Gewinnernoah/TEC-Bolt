@@ -15,22 +15,22 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'staff', 'teacher'], group: 'main' },
-  { id: 'inventory', label: 'Inventory', icon: Package, roles: ['admin', 'staff'], group: 'main' },
-  { id: 'lending', label: 'Lending', icon: HandHelping, roles: ['admin', 'staff', 'teacher'], group: 'main' },
-  { id: 'calendar', label: 'Availability Calendar', icon: CalendarDays, roles: ['admin', 'staff', 'teacher'], group: 'main' },
-  { id: 'printing', label: '3D Printing', icon: Printer, roles: ['admin', 'staff', 'teacher'], group: 'main' },
-  { id: 'tickets', label: 'Support Tickets', icon: Ticket, roles: ['admin', 'staff', 'teacher'], group: 'support' },
-  { id: 'monitoring', label: 'Network & Building', icon: Radio, roles: ['admin', 'staff', 'teacher'], group: 'support' },
-  { id: 'events', label: 'Events & Auditorium', icon: Mic2, roles: ['admin', 'staff', 'teacher'], group: 'support' },
-  { id: 'faq', label: 'FAQ & Knowledge Base', icon: BookOpen, roles: ['admin', 'staff', 'teacher'], group: 'support' },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, roles: ['admin', 'staff'], group: 'support' },
-  { id: 'admin-users', label: 'User Management', icon: Users, roles: ['admin'], group: 'admin' },
-  { id: 'admin-settings', label: 'System Settings', icon: Settings, roles: ['admin'], group: 'admin' },
-  { id: 'admin-logs', label: 'Activity Logs', icon: Monitor, roles: ['admin'], group: 'admin' },
+  { id: 'inventory', label: 'Inventar', icon: Package, roles: ['admin', 'staff'], group: 'main' },
+  { id: 'lending', label: 'Ausleihe', icon: HandHelping, roles: ['admin', 'staff', 'teacher'], group: 'main' },
+  { id: 'calendar', label: 'Verfuegbarkeitskalender', icon: CalendarDays, roles: ['admin', 'staff', 'teacher'], group: 'main' },
+  { id: 'printing', label: '3D-Druck', icon: Printer, roles: ['admin', 'staff', 'teacher'], group: 'main' },
+  { id: 'tickets', label: 'Support-Tickets', icon: Ticket, roles: ['admin', 'staff', 'teacher'], group: 'support' },
+  { id: 'monitoring', label: 'Netzwerk & Gebaeude', icon: Radio, roles: ['admin', 'staff', 'teacher'], group: 'support' },
+  { id: 'events', label: 'Events & Audimax', icon: Mic2, roles: ['admin', 'staff', 'teacher'], group: 'support' },
+  { id: 'faq', label: 'FAQ & Wissensdatenbank', icon: BookOpen, roles: ['admin', 'staff', 'teacher'], group: 'support' },
+  { id: 'analytics', label: 'Analyse', icon: BarChart3, roles: ['admin', 'staff'], group: 'support' },
+  { id: 'admin-users', label: 'Benutzerverwaltung', icon: Users, roles: ['admin'], group: 'admin' },
+  { id: 'admin-settings', label: 'Systemeinstellungen', icon: Settings, roles: ['admin'], group: 'admin' },
+  { id: 'admin-logs', label: 'Aktivitaetsprotokoll', icon: Monitor, roles: ['admin'], group: 'admin' },
 ];
 
 export const GROUP_LABELS: Record<NavItem['group'], string> = {
-  main: 'Operations',
+  main: 'Betrieb',
   support: 'Support & Info',
-  admin: 'Administration',
+  admin: 'Verwaltung',
 };

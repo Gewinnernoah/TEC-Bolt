@@ -44,9 +44,9 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#0a0e1a] p-6">
           <div className="max-w-lg rounded-xl border border-red-900/50 bg-red-950/20 p-8 text-center">
-            <h2 className="text-xl font-bold text-red-400">Something went wrong</h2>
+            <h2 className="text-xl font-bold text-red-400">Es ist ein Fehler aufgetreten</h2>
             <p className="mt-2 text-sm text-slate-400">
-              An unexpected error occurred. Try reloading the page.
+              Ein unerwarteter Fehler ist aufgetreten. Versuchen Sie, die Seite neu zu laden.
             </p>
             {this.state.error && (
               <pre className="mt-4 max-h-40 overflow-auto rounded-lg bg-black/40 p-3 text-left text-xs text-red-300">
@@ -58,13 +58,13 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleDismiss}
                 className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
               >
-                Try Again
+                Erneut versuchen
               </button>
               <button
                 onClick={this.handleReload}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
               >
-                Reload Page
+                Seite neu laden
               </button>
             </div>
           </div>
