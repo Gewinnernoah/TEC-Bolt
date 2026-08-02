@@ -37,16 +37,6 @@ function AppContent() {
     loadSettings();
   }, []);
 
-  // Landing-Page: nur anzeigen wenn nicht eingeloggt und Route = landing
-  if (route === 'landing' && !session && !loading) {
-    return <LandingPage />;
-  }
-
-  // Login-Route: Login-Seite anzeigen
-  if (route === 'login' && !session && !loading && !locked) {
-    return <LoginPage />;
-  }
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0e1a]">
@@ -56,6 +46,11 @@ function AppContent() {
         </div>
       </div>
     );
+  }
+
+  // Landing-Page: nur anzeigen wenn nicht eingeloggt und Route = landing
+  if (route === 'landing' && !session) {
+    return <LandingPage />;
   }
 
   if (locked && session) {

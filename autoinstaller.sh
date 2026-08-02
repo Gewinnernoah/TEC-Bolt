@@ -351,7 +351,7 @@ show_summary() {
 
     echo -e "  Starten mit:  ${COLOR_CYAN}npm run dev${COLOR_RESET}\n"
     echo -e "  Im Browser oeffnen:"
-    echo -e "    ${COLOR_CYAN}http://localhost:5173${COLOR_RESET}           (Hauptseite)"
+    echo -e "    ${COLOR_CYAN}http://localhost:5173/${COLOR_RESET}           (Hauptseite)"
     echo -e "    ${COLOR_CYAN}http://localhost:5173/dashboard${COLOR_RESET}  (Dashboard)\n"
 
     if test_pg_service; then

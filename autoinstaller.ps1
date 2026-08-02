@@ -12,21 +12,6 @@ Schritte manuell durchfuehren.
 $ErrorActionPreference = "Stop"
 
 # ---------------------------------------------------------------------------
-# Administrator-Rechte pruefen und ggf. anfordern
-# ---------------------------------------------------------------------------
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdmin) {
-    Write-Host "[INFO] Administratorrechte werden benoetigt. Das Skript fordert nun die Rechte an und startet sich neu..." -ForegroundColor Yellow
-    try {
-        Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-        Exit
-    } catch {
-        Write-Host "[FEHLER] Konnte keine Administratorrechte anfordern. Bitte starte PowerShell als Administrator und fuehre das Skript erneut aus." -ForegroundColor Red
-        Exit 1
-    }
-}
-
-# ---------------------------------------------------------------------------
 # Konfiguration
 # ---------------------------------------------------------------------------
 $NODE_MIN_MAJOR = 18; $NODE_MIN_MINOR = 0
@@ -36,13 +21,13 @@ $INSTALL_DIR = Join-Path $env:LOCALAPPDATA "Nodejs-Local"
 $PROJECT_DIR = $PSScriptRoot
 
 # PostgreSQL-Konfiguration
-$PG_TARGET_VERSION = "18"
+$PG_VERSION = "17"
 $PG_PORT = "5432"
 $PG_DB_NAME = "techub"
-$PG_USER = "postgres"
+$PG_USER = "techub_user"
 $PG_PASSWORD = "TechHub2024!"
 $PG_INSTALL_DIR = Join-Path $env:PROGRAMFILES "PostgreSQL"
-$PG_DATA_DIR = Join-Path $env:PROGRAMFILES "PostgreSQL\$PG_TARGET_VERSION\data"
+$PG_DATA_DIR = Join-Path $env:PROGRAMFILES "PostgreSQL\$PG_VERSION\data"
 
 # ---------------------------------------------------------------------------
 # Farbige Konsolenausgabe
@@ -54,236 +39,14 @@ function Write-LogError   { param($msg) Write-Host "[FEHLER] $msg" -ForegroundCo
 function Write-LogStep    { param($msg) Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 function Write-LogDetail  { param($msg) Write-Host "         $msg" -ForegroundColor DarkGray }
 
-function Quote-SqlIdentifier {
-    param([string]$Value)
-    return '"' + ($Value -replace '"', '""') + '"'
-}
-
-function Quote-SqlLiteral {
-    param([string]$Value)
-    return "'" + ($Value -replace "'", "''") + "'"
-}
-
-function Add-ToPath {
-    param([string]$PathValue)
-
-    if ([string]::IsNullOrWhiteSpace($PathValue) -or -not (Test-Path $PathValue)) {
-        return
-    }
-
-    if ($env:PATH -notmatch [regex]::Escape($PathValue)) {
-        $env:PATH = "$PathValue;" + $env:PATH
-    }
-
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    if ([string]::IsNullOrWhiteSpace($userPath)) {
-        $userPath = ""
-    }
-
-    if ($userPath -notmatch [regex]::Escape($PathValue)) {
-        $newUserPath = if ([string]::IsNullOrWhiteSpace($userPath)) { $PathValue } else { "$PathValue;$userPath" }
-        [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
-    }
-}
-
-function Get-PostgreSQLService {
-    $preferredServiceName = "postgresql-x64-$PG_TARGET_VERSION"
-    $service = Get-Service -Name $preferredServiceName -ErrorAction SilentlyContinue
-    if ($service) { return $service }
-
-    $services = Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue
-    if ($services) {
-        return $services | Select-Object -First 1
-    }
-
-    return $null
-}
-
-function Get-PostgreSQLPaths {
-    $candidates = New-Object System.Collections.Generic.List[object]
-    $seen = New-Object System.Collections.Generic.HashSet[string]
-
-    function Add-Candidate {
-        param(
-            [string]$Version,
-            [string]$ServiceName,
-            [string]$InstallDir,
-            [string]$BinDir
-        )
-
-        if ([string]::IsNullOrWhiteSpace($BinDir) -or -not (Test-Path $BinDir)) {
-            return
-        }
-
-        $psqlPath = Join-Path $BinDir "psql.exe"
-        $pgIsReadyPath = Join-Path $BinDir "pg_isready.exe"
-        if (-not (Test-Path $psqlPath) -or -not (Test-Path $pgIsReadyPath)) {
-            return
-        }
-
-        $key = $psqlPath.ToLowerInvariant()
-        if (-not $seen.Add($key)) {
-            return
-        }
-
-        if ([string]::IsNullOrWhiteSpace($Version)) {
-            $parentFolder = Split-Path $BinDir -Parent
-            if ($parentFolder) {
-                $Version = Split-Path $parentFolder -Leaf
-            }
-        }
-
-        if ([string]::IsNullOrWhiteSpace($ServiceName) -and -not [string]::IsNullOrWhiteSpace($Version)) {
-            $ServiceName = "postgresql-x64-$Version"
-        }
-
-        $candidates.Add([pscustomobject]@{
-            Version = $Version
-            ServiceName = $ServiceName
-            InstallDir = $InstallDir
-            BinDir = $BinDir
-            PsqlPath = $psqlPath
-            PgIsReadyPath = $pgIsReadyPath
-        }) | Out-Null
-    }
-
-    $service = Get-PostgreSQLService
-    if ($service) {
-        try {
-            $serviceInfo = Get-CimInstance -ClassName Win32_Service -Filter "Name='$($service.Name)'" -ErrorAction Stop
-            $serviceName = $service.Name
-            $version = if ($serviceName -match 'postgresql-x64-(\d+)') { $Matches[1] } else { $null }
-            if ($serviceInfo.PathName) {
-                $quotedPaths = [regex]::Matches($serviceInfo.PathName, '"([^"]+)"')
-                foreach ($match in $quotedPaths) {
-                    $exePath = $match.Groups[1].Value
-                    if ($exePath -match '\\(pg_ctl|postmaster|postgres|psql)\.exe$') {
-                        Add-Candidate -Version $version -ServiceName $serviceName -InstallDir (Split-Path (Split-Path $exePath -Parent) -Parent) -BinDir (Split-Path $exePath -Parent)
-                    }
-                }
-            }
-        } catch {
-            # Service-Path ist optional
-        }
-    }
-
-    foreach ($registryRoot in @("HKLM:\SOFTWARE\PostgreSQL\Installations", "HKLM:\SOFTWARE\WOW6432Node\PostgreSQL\Installations")) {
-        if (-not (Test-Path $registryRoot)) {
-            continue
-        }
-
-        foreach ($installKey in Get-ChildItem -Path $registryRoot -ErrorAction SilentlyContinue) {
-            try {
-                $installProps = Get-ItemProperty -Path $installKey.PSPath -ErrorAction Stop
-            } catch {
-                continue
-            }
-
-            $version = $installProps.Version
-            if ([string]::IsNullOrWhiteSpace($version) -and $installKey.PSChildName -match '(\d+(?:\.\d+)?)') {
-                $version = $Matches[1]
-            }
-
-            $baseDir = $installProps.'Base Directory'
-            if ([string]::IsNullOrWhiteSpace($baseDir)) { $baseDir = $installProps.BaseDirectory }
-            if ([string]::IsNullOrWhiteSpace($baseDir)) { $baseDir = $installProps.'Install Directory' }
-            if ([string]::IsNullOrWhiteSpace($baseDir)) { $baseDir = $installProps.InstallDirectory }
-
-            if (-not [string]::IsNullOrWhiteSpace($baseDir)) {
-                Add-Candidate -Version $version -ServiceName $null -InstallDir $baseDir -BinDir (Join-Path $baseDir "bin")
-            }
-        }
-    }
-
-    foreach ($root in @($PG_INSTALL_DIR, (Join-Path ${env:ProgramFiles(x86)} "PostgreSQL"))) {
-        if ([string]::IsNullOrWhiteSpace($root) -or -not (Test-Path $root)) {
-            continue
-        }
-
-        foreach ($installDir in Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue) {
-            Add-Candidate -Version $installDir.Name -ServiceName "postgresql-x64-$($installDir.Name)" -InstallDir $installDir.FullName -BinDir (Join-Path $installDir.FullName "bin")
-        }
-    }
-
-    $psqlCmd = Get-Command psql -ErrorAction SilentlyContinue
-    if ($psqlCmd -and $psqlCmd.Source) {
-        $binDir = Split-Path $psqlCmd.Source -Parent
-        $installDir = Split-Path $binDir -Parent
-        Add-Candidate -Version (Split-Path $installDir -Leaf) -ServiceName $null -InstallDir $installDir -BinDir $binDir
-    }
-
-    if ($candidates.Count -eq 0) {
-        return $null
-    }
-
-    return $candidates | Sort-Object @{ Expression = { try { [version](($_.Version -replace '[^0-9\.].*', '')) } catch { [version]'0.0' } }; Descending = $true } | Select-Object -First 1
-}
-
-function Invoke-PostgreSQLSql {
-    param(
-        [Parameter(Mandatory = $true)][string]$PsqlPath,
-        [Parameter(Mandatory = $true)][string]$Sql,
-        [Parameter(Mandatory = $true)][string]$Database,
-        [Parameter(Mandatory = $true)][string]$User,
-        [string]$Password = $PG_PASSWORD,
-        [switch]$Quiet
-    )
-
-    $previousPassword = $env:PGPASSWORD
-    $env:PGPASSWORD = $Password
-
-    $arguments = @('-h', 'localhost', '-p', $PG_PORT, '-U', $User, '-d', $Database, '-c', $Sql, '-w')
-    if ($Quiet) {
-        $arguments += '-t'
-    }
-
-    try {
-        # Hier leiten wir ab sofort alle Fehlerausgaben direkt mit um, damit du sie siehst
-        $output = & $PsqlPath @arguments 2>&1
-        $exitCode = $LASTEXITCODE
-        return [pscustomobject]@{
-            ExitCode = $exitCode
-            Output = ($output | Out-String).Trim()
-        }
-    } finally {
-        $env:PGPASSWORD = $previousPassword
-    }
-}
-
-function Wait-PostgreSQLReady {
-    param(
-        [Parameter(Mandatory = $true)][string]$PgIsReadyPath,
-        [int]$TimeoutSeconds = 60
-    )
-
-    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-    
-    $oldPref = $ErrorActionPreference
-    $ErrorActionPreference = "SilentlyContinue"
-
-    do {
-        $output = & $PgIsReadyPath -h localhost -p $PG_PORT 2>&1
-        if ($LASTEXITCODE -eq 0 -and ($output -match 'accepting connections')) {
-            $ErrorActionPreference = $oldPref
-            return $true
-        }
-
-        Start-Sleep -Seconds 1
-    } while ((Get-Date) -lt $deadline)
-
-    $ErrorActionPreference = $oldPref
-    return $false
-}
-
 # ---------------------------------------------------------------------------
-# Fehlerbehandlung
+# Fehlerbehandlung mit verstaendlichen Meldungen
 # ---------------------------------------------------------------------------
 function Handle-Error {
     param($msg, $ex, $hint)
     Write-LogError $msg
     if ($ex) {
-        $errorMsg = if ($ex.Exception) { $ex.Exception.Message } elseif ($ex.Message) { $ex.Message } else { $ex }
-        Write-LogDetail "Details: $errorMsg"
+        Write-LogDetail "Details: $($ex.Message)"
     }
     if ($hint) {
         Write-LogWarn "Hinweis: $hint"
@@ -362,365 +125,297 @@ function Install-Node {
 # PostgreSQL
 # ---------------------------------------------------------------------------
 function Test-PostgreSQL {
-    $paths = Get-PostgreSQLPaths
-    if (-not $paths) {
-        return $false
-    }
+    # Pruefe ob psql verfuegbar ist
+    $psqlCmd = Get-Command psql -ErrorAction SilentlyContinue
+    if ($psqlCmd) { return $true }
 
-    Add-ToPath $paths.BinDir
-    return $true
+    # Pruefe ob PostgreSQL im Standard-Installationsverzeichnis liegt
+    $pgExe = Join-Path $PG_INSTALL_DIR "$PG_VERSION\bin\psql.exe"
+    if (Test-Path $pgExe) {
+        $pgBin = Join-Path $PG_INSTALL_DIR "$PG_VERSION\bin"
+        $env:PATH = "$pgBin;" + $env:PATH
+        return $true
+    }
+    return $false
 }
 
 function Test-PostgreSQLService {
-    return [bool](Get-PostgreSQLService)
+    $service = Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue
+    if ($service) { return $true }
+    return $false
 }
 
 function Start-PostgreSQLService {
     try {
-        $paths = Get-PostgreSQLPaths
-        $service = if ($paths -and $paths.ServiceName) { Get-Service -Name $paths.ServiceName -ErrorAction SilentlyContinue } else { Get-PostgreSQLService }
-        if (-not $service) {
-            Handle-Error "PostgreSQL-Dienst wurde nicht gefunden." $null "Pruefen, ob PostgreSQL korrekt installiert wurde oder den Dienst manuell starten."
-        }
+        $service = Get-Service -Name "postgresql*" -ErrorAction Stop
         if ($service.Status -ne 'Running') {
             Write-LogInfo "Starte PostgreSQL-Dienst..."
             Start-Service -Name $service.Name
-            Start-Sleep -Seconds 3
+            Start-Sleep -Seconds 2
         }
         Write-LogOk "PostgreSQL-Dienst laeuft ($($service.Name))"
         return $true
     } catch {
-        Handle-Error "PostgreSQL-Dienst konnte nicht gestartet werden." $_ "Dienst manuell starten: net start postgresql-x64-$PG_TARGET_VERSION oder Dienste-Console (services.msc) oeffnen."
+        Handle-Error "PostgreSQL-Dienst konnte nicht gestartet werden." $_ "Dienst manuell starten: net start postgresql-x64-$PG_VERSION oder Dienste-Console (services.msc) oeffnen."
     }
 }
 
 function Install-PostgreSQL {
-    Write-LogInfo "Installiere PostgreSQL $PG_TARGET_VERSION automatisch..."
+    Write-LogInfo "Installiere PostgreSQL $PG_VERSION automatisch..."
 
-    $installed = $false
-    $wingetCmd = Get-Command winget -ErrorAction SilentlyContinue
-    if ($wingetCmd) {
-        Write-LogInfo "Versuche Installation ueber winget..."
-        $packageId = "PostgreSQL.PostgreSQL.$PG_TARGET_VERSION"
-        $override = '--superpassword "' + $PG_PASSWORD + '" --serverport ' + $PG_PORT + ' --servicename postgresql-x64-' + $PG_TARGET_VERSION + ' --enable-components server,commandlinetools'
-        $wingetArgs = @(
-            'install',
-            '--id', $packageId,
-            '--exact',
-            '--silent',
-            '--accept-package-agreements',
-            '--accept-source-agreements',
-            '--override', $override
-        )
+    $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
+    $filename = "postgresql-$PG_VERSION-1-windows-${arch}.exe"
+    $url = "https://sbp.enterprisedb.com/getfile.jspg?fileid=1259525"
+    $tmpfile = Join-Path $env:TEMP $filename
 
+    # Verschiedene Download-URLs versuchen
+    $urls = @(
+        "https://sbp.enterprisedb.com/getfile.jspg?fileid=1259525",
+        "https://www.enterprisedb.com/postgresql-tutorial-resources-training-1?uuid=download"
+    )
+
+    $downloaded = $false
+    foreach ($tryUrl in $urls) {
         try {
-            $wingetProcess = Start-Process -FilePath $wingetCmd.Source -ArgumentList $wingetArgs -Wait -PassThru -NoNewWindow
-            if ($wingetProcess.ExitCode -eq 0) {
-                $installed = $true
-                Write-LogOk "PostgreSQL ueber winget installiert"
-            } else {
-                Write-LogWarn "winget Installation meldete Exit-Code $($wingetProcess.ExitCode); versuche Fallback-Installer."
-            }
-        } catch {
-            Write-LogWarn "winget Installation fehlgeschlagen: $($_.Exception.Message)"
-        }
-    }
-
-    if (-not $installed) {
-        $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
-        $filename = "postgresql-$PG_TARGET_VERSION-1-windows-${arch}.exe"
-        $tmpfile = Join-Path $env:TEMP $filename
-        $urls = @(
-            "https://sbp.enterprisedb.com/getfile.jsp?fileid=1260302",
-            "https://www.enterprisedb.com/postgresql-tutorial-resources-training-1?uuid=download"
-        )
-
-        $downloaded = $false
-        foreach ($tryUrl in $urls) {
-            try {
-                Write-LogInfo "Versuche Download von: $tryUrl"
-                $ProgressPreference = 'SilentlyContinue'
-                Invoke-WebRequest -Uri $tryUrl -OutFile $tmpfile -MaximumRedirection 5
-                $ProgressPreference = 'Continue'
-                if (Test-Path $tmpfile) {
-                    $fileSize = (Get-Item $tmpfile).Length
-                    if ($fileSize -gt 1MB) {
-                        $downloaded = $true
-                        Write-LogOk "PostgreSQL-Installer heruntergeladen ($([math]::Round($fileSize/1MB, 1)) MB)"
-                        break
-                    }
+            Write-LogInfo "Versuche Download von: $tryUrl"
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri $tryUrl -OutFile $tmpfile -MaximumRedirection 5
+            $ProgressPreference = 'Continue'
+            if (Test-Path $tmpfile) {
+                $fileSize = (Get-Item $tmpfile).Length
+                if ($fileSize -gt 1MB) {
+                    $downloaded = $true
+                    Write-LogOk "PostgreSQL-Installer heruntergeladen ($([math]::Round($fileSize/1MB, 1)) MB)"
+                    break
                 }
-            } catch {
-                Write-LogWarn "Download von $tryUrl fehlgeschlagen: $($_.Exception.Message)"
             }
-        }
-
-        if (-not $downloaded) {
-            Handle-Error "PostgreSQL-Installer konnte nicht heruntergeladen werden." $null "Internetverbindung pruefen oder PostgreSQL manuell von https://www.postgresql.org/download/windows/ installieren."
-        }
-        
-        Unblock-File -Path $tmpfile -ErrorAction SilentlyContinue
-
-        Write-LogInfo "Installiere PostgreSQL (stiller Modus)..."
-        
-        $installArgs = @(
-            '--mode', 'unattended',
-            '--superpassword', $PG_PASSWORD,
-            '--serverport', $PG_PORT,
-            '--servicename', "postgresql-x64-$PG_TARGET_VERSION",
-            '--enable-components', 'server,commandlinetools',
-            '--datadir', "`"$PG_DATA_DIR`"",
-            '--installdir', "`"$(Join-Path $PG_INSTALL_DIR $PG_TARGET_VERSION)`""
-        )
-
-        try {
-            $process = Start-Process -FilePath $tmpfile -ArgumentList $installArgs -Wait -PassThru -NoNewWindow
-            if ($process.ExitCode -ne 0) {
-                Handle-Error "PostgreSQL-Installation fehlgeschlagen (Exit-Code: $($process.ExitCode))." $null "PostgreSQL manuell von https://www.postgresql.org/download/windows/ installieren. Port $PG_PORT verwenden."
-            }
-            $installed = $true
         } catch {
-            Handle-Error "PostgreSQL-Installer konnte nicht ausgefuehrt werden." $_ "Antivirus-Programm pruefen oder PostgreSQL manuell installieren."
-        } finally {
-            if (Test-Path $tmpfile) { Remove-Item -Force $tmpfile }
+            Write-LogWarn "Download von $tryUrl fehlgeschlagen: $($_.Exception.Message)"
         }
     }
 
-    $paths = Get-PostgreSQLPaths
-    if (-not $paths) {
+    if (-not $downloaded) {
+        Handle-Error "PostgreSQL-Installer konnte nicht heruntergeladen werden." $null "Internetverbindung pruefen oder PostgreSQL manuell von https://www.postgresql.org/download/windows/ herunterladen und installieren. Danach Installer erneut ausfuehren."
+    }
+
+    Write-LogInfo "Installiere PostgreSQL (stiller Modus)..."
+    $installArgs = @(
+        "--mode", "unattended",
+        "--superpassword", $PG_PASSWORD,
+        "--serverport", $PG_PORT,
+        "--servicename", "postgresql-x64-$PG_VERSION",
+        "--enable-components", "server,commandlinetools",
+        "--datadir", $PG_DATA_DIR,
+        "--installdir", (Join-Path $PG_INSTALL_DIR $PG_VERSION)
+    )
+
+    try {
+        $process = Start-Process -FilePath $tmpfile -ArgumentList $installArgs -Wait -PassThru -NoNewWindow
+        if ($process.ExitCode -ne 0) {
+            Handle-Error "PostgreSQL-Installation fehlgeschlagen (Exit-Code: $($process.ExitCode))." $null "PostgreSQL manuell von https://www.postgresql.org/download/windows/ installieren. Port $PG_PORT, Passwort: $PG_PASSWORD verwenden."
+        }
+    } catch {
+        Handle-Error "PostgreSQL-Installer konnte nicht ausgefuehrt werden." $_ "Antivirus-Programm pruefen oder PostgreSQL manuell installieren."
+    } finally {
+        if (Test-Path $tmpfile) { Remove-Item -Force $tmpfile }
+    }
+
+    # Pfad aktualisieren
+    $pgBin = Join-Path $PG_INSTALL_DIR "$PG_VERSION\bin"
+    if (Test-Path $pgBin) {
+        $env:PATH = "$pgBin;" + $env:PATH
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        if ($userPath -notmatch [regex]::Escape($pgBin)) {
+            [Environment]::SetEnvironmentVariable("Path", "$pgBin;$userPath", "User")
+            Write-LogInfo "PostgreSQL-Pfad zu PATH hinzugefuegt"
+        }
+    }
+
+    # Pruefen ob Installation erfolgreich war
+    if (-not (Test-PostgreSQL)) {
         Handle-Error "PostgreSQL wurde nicht korrekt installiert." $null "PostgreSQL manuell installieren und Installer erneut ausfuehren."
     }
 
-    Add-ToPath $paths.BinDir
-    Write-LogInfo "PostgreSQL-Pfad zu PATH hinzugefuegt"
+    Write-LogOk "PostgreSQL $PG_VERSION installiert"
 
-    if (-not (Wait-PostgreSQLReady -PgIsReadyPath $paths.PgIsReadyPath -TimeoutSeconds 90)) {
-        Handle-Error "PostgreSQL antwortet nicht auf Port $PG_PORT." $null "Dienst manuell starten oder Installation pruefen."
-    }
-
-    Write-LogOk "PostgreSQL $($paths.Version) installiert"
-
+    # Dienst starten
+    Start-Sleep -Seconds 3
     if (Test-PostgreSQLService) {
         Start-PostgreSQLService
     } else {
-        Write-LogWarn "PostgreSQL-Dienst konnte nicht eindeutig ermittelt werden, die Installation wird dennoch fortgesetzt."
+        Handle-Error "PostgreSQL-Dienst wurde nicht gefunden." $null "PostgreSQL-Dienst manuell starten oder Neuinstallation durchfuehren."
     }
 }
 
 function Test-PostgreSQLConnection {
-    param($dbName = "postgres", $dbUser = "postgres", $dbPassword = $PG_PASSWORD, [int]$MaxRetries = 5)
-
-    $paths = Get-PostgreSQLPaths
-    if (-not $paths -or -not $paths.PsqlPath) {
+    param($dbName = "postgres", $dbUser = "postgres", $dbPassword = $PG_PASSWORD)
+    try {
+        $env:PGPASSWORD = $dbPassword
+        $result = & psql -h localhost -p $PG_PORT -U $dbUser -d $dbName -c "SELECT 1;" -t -w 2>&1
+        $env:PGPASSWORD = $null
+        if ($LASTEXITCODE -eq 0) { return $true }
+        return $false
+    } catch {
+        $env:PGPASSWORD = $null
         return $false
     }
-
-    for ($i = 1; $i -le $MaxRetries; $i++) {
-        try {
-            $result = Invoke-PostgreSQLSql -PsqlPath $paths.PsqlPath -Sql 'SELECT 1;' -Database $dbName -User $dbUser -Password $dbPassword -Quiet
-            if ($null -ne $result -and $result.ExitCode -eq 0) {
-                return $true
-            }
-        } catch {
-            # Fehler abfangen, damit die Schleife nicht abbricht
-        }
-        
-        if ($i -lt $MaxRetries) {
-            Start-Sleep -Seconds 2
-        }
-    }
-
-    return $false
 }
 
 function Initialize-Database {
-    Write-LogInfo "Pruefe Datenbankverbindung direkt..."
+    Write-LogInfo "Pruefe Datenbankverbindung..."
 
-    $paths = Get-PostgreSQLPaths
-    if (-not $paths) {
-        Handle-Error "PostgreSQL-Pfade nicht gefunden." $null "Bitte PostgreSQL manuell installieren."
+    # Auf PostgreSQL-Verbindung warten
+    $maxRetries = 10
+    $connected = $false
+    for ($i = 1; $i -le $maxRetries; $i++) {
+        if (Test-PostgreSQLConnection -dbName "postgres" -dbUser "postgres") {
+            $connected = $true
+            break
+        }
+        Write-LogWarn "Verbindungsversuch $i/$maxRetries fehlgeschlagen, warte 2 Sekunden..."
+        Start-Sleep -Seconds 2
     }
 
-    $adminPsql = $paths.PsqlPath
-    $dbNameSql = Quote-SqlIdentifier $PG_DB_NAME
-    $userNameSql = Quote-SqlIdentifier $PG_USER
-
-    # Direkt ein einzelner Test-Versuch ohne Schleifen-Hänger
-    Write-LogInfo "Verbinde mit PostgreSQL als Superuser..."
-    $testResult = Invoke-PostgreSQLSql -PsqlPath $adminPsql -Sql 'SELECT 1;' -Database "postgres" -User "postgres" -Password $PG_PASSWORD -Quiet
-
-    if ($null -eq $testResult -or $testResult.ExitCode -ne 0) {
-        Write-LogError "Verbindung fehlgeschlagen. Ausgabe:"
-        if ($testResult) { Write-Host $testResult.Output -ForegroundColor Red }
-        Handle-Error "PostgreSQL-Verbindung nicht moeglich."
+    if (-not $connected) {
+        Handle-Error "PostgreSQL ist nicht erreichbar (Port $PG_PORT)." $null @(
+            "Moegliche Ursachen:",
+            "  - PostgreSQL-Dienst laeuft nicht (net start postgresql-x64-$PG_VERSION)",
+            "  - Port $PG_PORT ist blockiert (netstat -an | findstr $PG_PORT)",
+            "  - Firewall blockiert die Verbindung",
+            "  - Falsches Passwort"
+        ) -join "`n"
     }
 
-    Write-LogOk "Verbindung erfolgreich"
+    Write-LogOk "Verbindung zu PostgreSQL hergestellt"
 
-    # 1. Datenbank prüfen/erstellen
-    Write-LogInfo "Pruefe Datenbank '$PG_DB_NAME'..."
-    $dbExists = Invoke-PostgreSQLSql -PsqlPath $adminPsql -Sql "SELECT 1 FROM pg_database WHERE datname = $(Quote-SqlLiteral $PG_DB_NAME);" -Database 'postgres' -User 'postgres' -Password $PG_PASSWORD -Quiet
-    
-    if ($dbExists.ExitCode -eq 0 -and $dbExists.Output -match '1') {
+    # Datenbank erstellen
+    Write-LogInfo "Erstelle Datenbank '$PG_DB_NAME' (falls nicht vorhanden)..."
+    $env:PGPASSWORD = $PG_PASSWORD
+    $dbExists = & psql -h localhost -p $PG_PORT -U postgres -d postgres -t -c "SELECT 1 FROM pg_database WHERE datname = '$PG_DB_NAME';" -w 2>&1
+    if ($dbExists -match "1") {
         Write-LogInfo "Datenbank '$PG_DB_NAME' existiert bereits"
     } else {
-        $createDb = Invoke-PostgreSQLSql -PsqlPath $adminPsql -Sql "CREATE DATABASE $dbNameSql;" -Database 'postgres' -User 'postgres' -Password $PG_PASSWORD
-        if ($createDb.ExitCode -eq 0) {
+        try {
+            & psql -h localhost -p $PG_PORT -U postgres -d postgres -c "CREATE DATABASE $PG_DB_NAME;" -w 2>&1 | Out-Null
             Write-LogOk "Datenbank '$PG_DB_NAME' erstellt"
-        } else {
-            Write-Host $createDb.Output -ForegroundColor Red
-            Handle-Error "Konnte Datenbank nicht erstellen."
+        } catch {
+            Handle-Error "Datenbank '$PG_DB_NAME' konnte nicht erstellt werden." $_ "Berechtigungen pruefen oder Datenbank manuell erstellen: createdb -U postgres $PG_DB_NAME"
         }
     }
 
-    # 2. Benutzer prüfen/erstellen
-    Write-LogInfo "Pruefe Benutzer '$PG_USER'..."
-    $userExists = Invoke-PostgreSQLSql -PsqlPath $adminPsql -Sql "SELECT 1 FROM pg_roles WHERE rolname = $(Quote-SqlLiteral $PG_USER);" -Database 'postgres' -User 'postgres' -Password $PG_PASSWORD -Quiet
-
-    if ($userExists.ExitCode -eq 0 -and $userExists.Output -match '1') {
-        Write-LogInfo "Benutzer '$PG_USER' existiert bereits - aktualisiere Passwort..."
-        Invoke-PostgreSQLSql -PsqlPath $adminPsql -Sql "ALTER USER $userNameSql WITH PASSWORD $(Quote-SqlLiteral $PG_PASSWORD);" -Database 'postgres' -User 'postgres' -Password $PG_PASSWORD | Out-Null
+    # Benutzer erstellen
+    Write-LogInfo "Erstelle Benutzer '$PG_USER' (falls nicht vorhanden)..."
+    $userExists = & psql -h localhost -p $PG_PORT -U postgres -d postgres -t -c "SELECT 1 FROM pg_roles WHERE rolname = '$PG_USER';" -w 2>&1
+    if ($userExists -match "1") {
+        Write-LogInfo "Benutzer '$PG_USER' existiert bereits"
+        # Passwort zuruecksetzen
+        & psql -h localhost -p $PG_PORT -U postgres -d postgres -c "ALTER USER $PG_USER WITH PASSWORD '$PG_PASSWORD';" -w 2>&1 | Out-Null
     } else {
-        $createUser = Invoke-PostgreSQLSql -PsqlPath $adminPsql -Sql "CREATE USER $userNameSql WITH PASSWORD $(Quote-SqlLiteral $PG_PASSWORD);" -Database 'postgres' -User 'postgres' -Password $PG_PASSWORD
-        if ($createUser.ExitCode -eq 0) {
+        try {
+            & psql -h localhost -p $PG_PORT -U postgres -d postgres -c "CREATE USER $PG_USER WITH PASSWORD '$PG_PASSWORD';" -w 2>&1 | Out-Null
             Write-LogOk "Benutzer '$PG_USER' erstellt"
-        } else {
-            Write-Host $createUser.Output -ForegroundColor Red
-            Handle-Error "Konnte Benutzer nicht erstellen."
+        } catch {
+            Handle-Error "Benutzer '$PG_USER' konnte nicht erstellt werden." $_ "Benutzer manuell erstellen: createuser -U postgres -P $PG_USER"
         }
     }
 
-    # 3. Berechtigungen vergeben
+    # Berechtigungen erteilen
     Write-LogInfo "Erteile Berechtigungen..."
-    Invoke-PostgreSQLSql -PsqlPath $adminPsql -Sql "GRANT ALL PRIVILEGES ON DATABASE $dbNameSql TO $userNameSql;" -Database 'postgres' -User 'postgres' -Password $PG_PASSWORD | Out-Null
-    Invoke-PostgreSQLSql -PsqlPath $adminPsql -Sql "GRANT ALL ON SCHEMA public TO $userNameSql;" -Database $PG_DB_NAME -User 'postgres' -Password $PG_PASSWORD | Out-Null
-    Invoke-PostgreSQLSql -PsqlPath $adminPsql -Sql "ALTER DATABASE $dbNameSql OWNER TO $userNameSql;" -Database 'postgres' -User 'postgres' -Password $PG_PASSWORD | Out-Null
+    try {
+        & psql -h localhost -p $PG_PORT -U postgres -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE $PG_DB_NAME TO $PG_USER;" -w 2>&1 | Out-Null
+        & psql -h localhost -p $PG_PORT -U postgres -d $PG_DB_NAME -c "GRANT ALL ON SCHEMA public TO $PG_USER;" -w 2>&1 | Out-Null
+        & psql -h localhost -p $PG_PORT -U postgres -d $PG_DB_NAME -c "ALTER DATABASE $PG_DB_NAME OWNER TO $PG_USER;" -w 2>&1 | Out-Null
+        Write-LogOk "Berechtigungen erteilt"
+    } catch {
+        Write-LogWarn "Berechtigungen konnten nicht vollstaendig erteilt werden: $($_.Exception.Message)"
+    }
 
-    Write-LogOk "Datenbank-Setup erfolgreich abgeschlossen"
-    Start-Sleep -Seconds 3
+    $env:PGPASSWORD = $null
+
+    # Verbindung mit neuem Benutzer testen
+    if (Test-PostgreSQLConnection -dbName $PG_DB_NAME -dbUser $PG_USER -dbPassword $PG_PASSWORD) {
+        Write-LogOk "Verbindung mit Benutzer '$PG_USER' erfolgreich"
+    } else {
+        Write-LogWarn "Verbindungstest mit neuem Benutzer fehlgeschlagen - verwende postgres-Account"
+    }
 }
 
 # ---------------------------------------------------------------------------
-# .env erstellen & aktualisieren (Schritt 5/6)
+# .env erstellen & aktualisieren
 # ---------------------------------------------------------------------------
 function Initialize-Env {
     Set-Location $PROJECT_DIR
-    Write-LogStep "5/6  Anwendung konfigurieren (.env)"
 
-    try {
-        if (-not (Test-Path ".env")) {
-            $exampleEnv = Join-Path $PROJECT_DIR "src\lib\.env.example"
-            if (Test-Path $exampleEnv) {
-                Copy-Item -Path $exampleEnv -Destination ".env" -Force
-            } else {
-                New-Item -ItemType File -Path ".env" -Force | Out-Null
-            }
-        }
-
-        $envContent = Get-Content ".env" -Raw -ErrorAction SilentlyContinue
-        if ($null -eq $envContent) { $envContent = "" }
-
-        if ($envContent -match "VITE_DB_MODE=") {
-            $envContent = $envContent -replace 'VITE_DB_MODE=.*', "VITE_DB_MODE=supabase"
-        } else {
-            $envContent += "`nVITE_DB_MODE=supabase"
-        }
-
-        Set-Content -Path ".env" -Value $envContent.Trim() -Encoding UTF8
-        Write-LogOk ".env konfiguriert (VITE_DB_MODE=supabase)"
-    } catch {
-        Write-LogWarn "Konnte .env nicht vollstaendig schreiben: $($_.Exception.Message)"
+    if (-not (Test-Path ".env")) {
+        New-Item -ItemType File -Path ".env" -Force | Out-Null
     }
+
+    $envContent = Get-Content ".env" -Raw
+    if ($null -eq $envContent) { $envContent = "" }
+
+    # VITE_DB_MODE auf supabase setzen (Standard: PostgreSQL)
+    if ($envContent -match "VITE_DB_MODE=") {
+        $envContent = $envContent -replace 'VITE_DB_MODE=.*', "VITE_DB_MODE=supabase"
+    } else {
+        $envContent += "`nVITE_DB_MODE=supabase"
+    }
+
+    # PostgreSQL-Verbindungsdaten eintragen
+    $connStr = "postgresql://$PG_USER`:$PG_PASSWORD@localhost:$PG_PORT/$PG_DB_NAME"
+    if ($envContent -match "DATABASE_URL=") {
+        $envContent = $envContent -replace 'DATABASE_URL=.*', "DATABASE_URL=$connStr"
+    } else {
+        $envContent += "`nDATABASE_URL=$connStr"
+    }
+
+    # Supabase-Verbindungsdaten fuer lokalen Gebrauch
+    if ($envContent -match "VITE_SUPABASE_URL=") {
+        $envContent = $envContent -replace 'VITE_SUPABASE_URL=.*', "VITE_SUPABASE_URL=http://localhost:$PG_PORT"
+    } else {
+        $envContent += "`nVITE_SUPABASE_URL=http://localhost:$PG_PORT"
+    }
+
+    Set-Content -Path ".env" -Value $envContent.Trim() -Encoding UTF8
+    Write-LogOk ".env konfiguriert (PostgreSQL, Datenbank: $PG_DB_NAME)"
+    Write-LogDetail "Verbindung: localhost:$PG_PORT/$PG_DB_NAME (Benutzer: $PG_USER)"
 }
 
 # ---------------------------------------------------------------------------
-# Projekt-Setup & Build (Schritt 6/6)
+# Projekt-Setup & Verifikation
 # ---------------------------------------------------------------------------
 function Initialize-Project {
     Set-Location $PROJECT_DIR
-    Write-LogStep "6/6  Projekt-Abhaengigkeiten und Build"
-    
-    Write-LogInfo "Installiere npm-Abhaengigkeiten via System-CMD..."
-
-    try {
-        # Wir zwingen Windows über cmd.exe /c den globalen npm-Befehl auszuführen, 
-        # damit er nicht in den lokalen node_modules-Pfad stolpert.
-        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $processInfo.FileName = "cmd.exe"
-        $processInfo.Arguments = "/c npm install --no-fund --no-audit"
-        $processInfo.WorkingDirectory = $PROJECT_DIR
-        $processInfo.UseShellExecute = $false
-        $processInfo.RedirectStandardOutput = $true
-        $processInfo.RedirectStandardError = $true
-
-        $process = [System.Diagnostics.Process]::Start($processInfo)
-        $output = $process.StandardOutput.ReadToEnd()
-        $errorOutput = $process.StandardError.ReadToEnd()
-        $process.WaitForExit()
-
-        if ($process.ExitCode -eq 0) {
-            Write-LogOk "Abhaengigkeiten erfolgreich installiert"
-        } else {
-            Write-LogWarn "npm install meldete Warnungen/Fehler (Exit-Code $($process.ExitCode))."
-            if ($errorOutput) { Write-Host $errorOutput -ForegroundColor Yellow }
-        }
-    } catch {
-        Write-LogWarn "Fehler bei npm install: $($_.Exception.Message)"
+    if (Test-Path "node_modules") {
+        Write-LogInfo "Aktualisiere Abhaengigkeiten..."
+    } else {
+        Write-LogInfo "Installiere npm-Abhaengigkeiten..."
     }
 
-    # Build ebenfalls über cmd.exe absichern
-    Write-LogInfo "Führe Build aus..."
     try {
-        $buildProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $buildProcessInfo.FileName = "cmd.exe"
-        $buildProcessInfo.Arguments = "/c npm run build"
-        $buildProcessInfo.WorkingDirectory = $PROJECT_DIR
-        $buildProcessInfo.UseShellExecute=$false
-        $buildProcessInfo.RedirectStandardOutput = $true
-        $buildProcessInfo.RedirectStandardError = $true
-
-        $buildProcess = [System.Diagnostics.Process]::Start($buildProcessInfo)
-        $buildOutput = $buildProcess.StandardOutput.ReadToEnd()
-        $buildProcess.WaitForExit()
-
-        if ($buildProcess.ExitCode -eq 0) {
-            Write-LogOk "Build erfolgreich"
-        } else {
-            Write-LogWarn "Build-Schritt fehlgeschlagen (kann ignoriert werden, App läuft trotzdem)."
-        }
+        & "npm.cmd" install --no-fund --no-audit 2>&1 | Out-Null
+        Write-LogOk "Abhaengigkeiten installiert"
     } catch {
-        Write-LogWarn "Build konnte nicht ausgeführt werden."
+        Handle-Error "npm-Abhaengigkeiten konnten nicht installiert werden." $_ "Internetverbindung pruefen oder 'npm install' manuell ausfuehren."
     }
-    
-    $global:LASTEXITCODE = 0
+
+    $env:PATH = "$(Join-Path $PROJECT_DIR 'node_modules\.bin');" + $env:PATH
 }
+
 function Test-Project {
     Set-Location $PROJECT_DIR
-    Write-LogStep "6/6  Build-Verifikation"
-    Write-LogInfo "Führe Build aus..."
-    Start-Sleep -Seconds 3
+    Write-LogStep "Build-Verifikation"
 
     try {
-        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $processInfo.FileName = "npm.cmd"
-        $processInfo.Arguments = "run build"
-        $processInfo.WorkingDirectory = $PROJECT_DIR
-        $processInfo.UseShellExecute = $false
-        $processInfo.RedirectStandardOutput = $true
-        $processInfo.RedirectStandardError = $true
-
-        $process = [System.Diagnostics.Process]::Start($processInfo)
-        $process.WaitForExit()
-
-        if ($process.ExitCode -eq 0) {
+        $buildOutput = & "npm.cmd" run build 2>&1
+        if ($LASTEXITCODE -eq 0 -and $buildOutput -match "built in|vite") {
             Write-LogOk "Build erfolgreich"
         } else {
-            Write-LogWarn "Build-Schritt fehlgeschlagen, aber die App kann trotzdem manuell gestartet werden."
+            Write-Host $buildOutput
+            Write-LogWarn "Build fehlgeschlagen (nicht kritisch - App kann trotzdem gestartet werden)"
         }
     } catch {
-        Write-LogWarn "Build konnte nicht ausgeführt werden (unkritisch)."
+        Write-LogWarn "Build fehlgeschlagen: $($_.Exception.Message)"
     }
-    
     $global:LASTEXITCODE = 0
 }
 
@@ -728,16 +423,13 @@ function Test-Project {
 # Zusammenfassung
 # ---------------------------------------------------------------------------
 function Show-Summary {
-    $paths = Get-PostgreSQLPaths
-    $installedVersion = if ($paths -and $paths.Version) { $paths.Version } else { $PG_TARGET_VERSION }
-
     Write-Host "`n============================================" -ForegroundColor Green
     Write-Host "  Installation erfolgreich abgeschlossen!"   -ForegroundColor Green
     Write-Host "============================================`n" -ForegroundColor Green
 
     Write-Host "  Node.js:     $(try { node --version } catch { 'nicht gefunden' })"
     Write-Host "  npm:         $(try { npm --version } catch { 'nicht gefunden' })"
-    Write-Host "  PostgreSQL:  $installedVersion (Port $PG_PORT)"
+    Write-Host "  PostgreSQL:  $PG_VERSION (Port $PG_PORT)"
     Write-Host "  Datenbank:   $PG_DB_NAME"
     Write-Host "  Benutzer:    $PG_USER"
     Write-Host "  Projekt:     $PROJECT_DIR`n"
@@ -745,8 +437,8 @@ function Show-Summary {
     Write-Host "  Starten mit:  npm run dev`n" -ForegroundColor Cyan
 
     Write-Host "  Im Browser oeffnen:" -ForegroundColor White
-    Write-Host "    http://localhost:5173           (Hauptseite)" -ForegroundColor Cyan
-    Write-Host "    http://localhost:5173/dashboard  (Dashboard)`n" -ForegroundColor Cyan
+    Write-Host "    http://localhost:5173/           (Hauptseite)" -ForegroundColor Cyan
+    Write-Host "    http://localhost:5173/dashboard   (Dashboard)`n" -ForegroundColor Cyan
 
     if (Test-PostgreSQLService) {
         Write-LogOk "PostgreSQL-Dienst laeuft"
@@ -800,24 +492,19 @@ function Main {
 
     # 3. Datenbank & Benutzer
     Write-LogStep "4/6  Datenbank und Benutzer einrichten"
-    Start-sleep -Seconds 3
     Initialize-Database
 
     # 4. .env konfigurieren
-    Start-sleep -Seconds 3
+    Write-LogStep "5/6  Anwendung konfigurieren"
     Initialize-Env
 
-    # 5. Projekt-Abhaengigkeiten & Build (zusammengefasst als Schritt 6)
-    Start-sleep -Seconds 3
+    # 5. Projekt-Abhaengigkeiten & Build
+    Write-LogStep "6/6  Projekt-Abhaengigkeiten und Build"
     Initialize-Project
+    Test-Project
 
     # Zusammenfassung
-    Start-sleep -Seconds 3
     Show-Summary
 }
 
 Main
-
-# Am Ende des Skripts einfügen:
-Write-Host "`nDrücke Enter, um das Fenster zu schließen..." -ForegroundColor Cyan
-[void][System.Console]::ReadLine()
