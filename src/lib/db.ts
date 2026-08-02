@@ -8,6 +8,7 @@ export {
   DB_MODE,
   IS_SUPABASE,
   IS_SQLITE,
+  IS_POSTGRES,
   getDbMode,
 } from './database';
 export type { DbMode } from './database';

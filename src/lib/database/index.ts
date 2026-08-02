@@ -19,11 +19,12 @@ import { dbLog, logInit } from './logger';
 export type { DbClient, DbMode, DbResult } from './types';
 
 // ---------- Mode detection ----------
-export type DbMode = 'supabase' | 'sqlite';
+export type DbMode = 'supabase' | 'sqlite' | 'postgres';
 
 export function getDbMode(): DbMode {
   const mode = import.meta.env.VITE_DB_MODE as string | undefined;
   if (mode === 'sqlite') return 'sqlite';
+  if (mode === 'postgres') return 'postgres';
   // Default: PostgreSQL (via Supabase)
   return 'supabase';
 }
@@ -31,6 +32,7 @@ export function getDbMode(): DbMode {
 export const DB_MODE = getDbMode();
 export const IS_SUPABASE = DB_MODE === 'supabase';
 export const IS_SQLITE = DB_MODE === 'sqlite';
+export const IS_POSTGRES = DB_MODE === 'postgres';
 
 // ---------- Client initialization ----------
 type AnyClient = any;
@@ -42,6 +44,10 @@ const dbReady: Promise<AnyClient> = (async () => {
     logInit('Modus: SQLite (Offline)');
     const mod = await import('./sqlite-adapter');
     c = await mod.createSqliteClient();
+  } else if (IS_POSTGRES) {
+    logInit('Modus: Lokales PostgreSQL');
+    const mod = await import('./postgres-adapter');
+    c = await mod.createPostgresClient();
   } else {
     logInit('Modus: PostgreSQL / Supabase');
     const mod = await import('./supabase-adapter');
