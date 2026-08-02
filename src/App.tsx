@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { loadSettings } from '@/lib/settings';
-import { dbReady } from '@/lib/db';
+import { dbReady } from '@/lib/database';
 import { ToastProvider } from '@/components/Toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppShell } from '@/components/AppShell';

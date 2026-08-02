@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { supabase, dbReady } from './db';
+import { supabase, dbReady } from './database';
 import type { Profile, UserRole } from './types';
 import { logActivity } from './utils';
 

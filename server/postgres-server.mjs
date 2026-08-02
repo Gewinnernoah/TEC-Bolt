@@ -3,7 +3,7 @@
 // This server runs on your machine, connects to your local PostgreSQL,
 // and exposes a simple REST API that the browser app can talk to.
 //
-// Start it with:  node server/postgres-server.mjs
+// Start it with:  node server/postgres-server.mjs  (or npm run dev starts it automatically)
 //
 // Configuration via environment variables or .env file:
 //   PG_HOST      default: localhost
@@ -17,6 +17,7 @@ import http from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto';
 import pg from 'pg';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -86,8 +87,6 @@ function token() {
 }
 
 // ---------- Password hashing (PBKDF2 via Node crypto) ----------
-import { pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto';
-
 function hashPassword(password) {
   const salt = randomBytes(16);
   const hash = pbkdf2Sync(password, salt, 100000, 32, 'sha256');
@@ -116,6 +115,24 @@ async function getUserFromReq(req) {
   if (result.rows.length === 0) return null;
   return { id: result.rows[0].user_id, email: result.rows[0].email };
 }
+
+// ---------- Tables that have an updated_at column ----------
+const HAS_UPDATED_AT = new Set([
+  'profiles', 'devices', 'consumables', 'printers', 'print_requests',
+  'tickets', 'faqs', 'events', 'repair_records', 'lending_requests',
+  'lending_loans', 'filament_inventory', 'system_settings',
+]);
+
+// ---------- Tables that have a created_at column ----------
+const HAS_CREATED_AT = new Set([
+  'profiles', 'inventory_categories', 'buildings', 'rooms', 'cabinets', 'shelves',
+  'devices', 'device_bundles', 'device_bundle_items', 'lending_periods', 'break_periods',
+  'lending_requests', 'lending_request_items', 'lending_loans', 'lending_loan_items',
+  'system_settings', 'activity_logs', 'consumables', 'filament_catalog', 'filament_inventory',
+  'printers', 'print_requests', 'ticket_categories', 'tickets', 'ticket_comments',
+  'wifi_measurements', 'faqs', 'events', 'event_tasks', 'damage_reports', 'repair_records',
+  'inventory_audits', 'inventory_audit_items', 'device_notes', 'notifications',
+]);
 
 // ---------- Schema initialization ----------
 async function initSchema() {
@@ -147,8 +164,6 @@ function buildSelect(table, params) {
 
   const filters = params.filters || {};
   for (const [key, val] of Object.entries(filters)) {
-    // Support operator suffixes: col__neq, col__gt, col__lt, col__gte, col__lte,
-    // col__like, col__ilike, col__in, col__is
     let col = key;
     let op = '=';
     const opIdx = key.indexOf('__');
@@ -159,19 +174,20 @@ function buildSelect(table, params) {
       if (opMap[opName]) op = opMap[opName];
       else if (opName === 'in') {
         const items = String(val).split(',').filter(Boolean);
-        const placeholders = items.map((_, i) => `${values.length + 1 + i}`).join(',');
+        if (items.length === 0) { conditions.push('FALSE'); continue; }
+        const placeholders = items.map((_, i) => `$${values.length + 1 + i}`).join(',');
         values.push(...items);
         conditions.push(`"${col}" IN (${placeholders})`);
         continue;
       } else if (opName === 'is') {
         if (val === 'null') { conditions.push(`"${col}" IS NULL`); continue; }
         values.push(val);
-        conditions.push(`"${col}" IS NOT NULL AND "${col}" = ${values.length}`);
+        conditions.push(`"${col}" IS NOT NULL AND "${col}" = $${values.length}`);
         continue;
       }
     }
     values.push(val);
-    conditions.push(`"${col}" ${op} ${values.length}`);
+    conditions.push(`"${col}" ${op} $${values.length}`);
   }
 
   if (conditions.length > 0) {
@@ -187,6 +203,34 @@ function buildSelect(table, params) {
   }
 
   return { sql, values };
+}
+
+// ---------- Value encoding ----------
+const JSON_COLS = new Set([
+  'metadata', 'webauthn_credentials', 'photos', 'installed_technology',
+  'available_connections', 'connections', 'speedtest_result', 'ping_result',
+  'stage_plan', 'equipment_plan', 'rehearsal_schedule', 'intake_form_data',
+  'details', 'tags', 'value',
+]);
+
+function encodeValue(col, val) {
+  if (val === undefined || val === null) return null;
+  if (JSON_COLS.has(col)) return JSON.stringify(val);
+  if (typeof val === 'boolean') return val;
+  return val;
+}
+
+function normalizeRow(row) {
+  if (!row) return null;
+  const out = {};
+  for (const [key, val] of Object.entries(row)) {
+    if (JSON_COLS.has(key) && typeof val === 'string') {
+      try { out[key] = JSON.parse(val); } catch { out[key] = val; }
+    } else {
+      out[key] = val;
+    }
+  }
+  return out;
 }
 
 // ---------- Route handlers ----------
@@ -292,7 +336,6 @@ async function handleRequest(req, res, body) {
       if (id) {
         params = { filters: { id } };
       } else {
-        // Parse query params: filters (JSON), order (JSON), limit (number)
         const filtersParam = url.searchParams.get('filters');
         const orderParam = url.searchParams.get('order');
         const limitParam = url.searchParams.get('limit');
@@ -319,24 +362,25 @@ async function handleRequest(req, res, body) {
     if (method === 'POST') {
       if (id) {
         // POST to /api/table/:id = update
-        const data = { ...body, updated_at: new Date().toISOString() };
+        const data = { ...body };
+        if (HAS_UPDATED_AT.has(table)) data.updated_at = new Date().toISOString();
         delete data.id;
         const cols = Object.keys(data);
         if (cols.length === 0) return json(res, { data: null, error: { message: 'No fields to update' } });
-        const setClause = cols.map((c, i) => `"${c}" = ${i + 1}`).join(', ');
+        const setClause = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
         const vals = cols.map((c) => encodeValue(c, data[c]));
         vals.push(id);
-        await pool.query(`UPDATE "${table}" SET ${setClause} WHERE "id" = ${vals.length}`, vals);
+        await pool.query(`UPDATE "${table}" SET ${setClause} WHERE "id" = $${vals.length}`, vals);
         const result = await pool.query(`SELECT * FROM "${table}" WHERE "id" = $1`, [id]);
         return json(res, { data: normalizeRow(result.rows[0]) || null });
       }
       const data = { ...body };
       if (!data.id) data.id = uuid();
-      if (!data.created_at) data.created_at = new Date().toISOString();
-      if (!data.updated_at) data.updated_at = new Date().toISOString();
+      if (HAS_CREATED_AT.has(table) && !data.created_at) data.created_at = new Date().toISOString();
+      if (HAS_UPDATED_AT.has(table) && !data.updated_at) data.updated_at = new Date().toISOString();
 
       const cols = Object.keys(data);
-      const placeholders = cols.map((_, i) => `${i + 1}`).join(', ');
+      const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
       const values = cols.map((c) => encodeValue(c, data[c]));
       await pool.query(`INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${placeholders})`, values);
       return json(res, { data: normalizeRow(data) });
@@ -344,9 +388,11 @@ async function handleRequest(req, res, body) {
 
     // PUT = update (by id)
     if (method === 'PUT' && id) {
-      const data = { ...body, updated_at: new Date().toISOString() };
+      const data = { ...body };
+      if (HAS_UPDATED_AT.has(table)) data.updated_at = new Date().toISOString();
       delete data.id;
       const cols = Object.keys(data);
+      if (cols.length === 0) return json(res, { data: null, error: { message: 'No fields to update' } });
       const setClause = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
       const values = cols.map((c) => encodeValue(c, data[c]));
       values.push(id);
@@ -363,34 +409,6 @@ async function handleRequest(req, res, body) {
   }
 
   return json(res, { error: 'Not found' }, 404);
-}
-
-// ---------- Value encoding ----------
-const JSON_COLS = new Set([
-  'metadata', 'webauthn_credentials', 'photos', 'installed_technology',
-  'available_connections', 'connections', 'speedtest_result', 'ping_result',
-  'stage_plan', 'equipment_plan', 'rehearsal_schedule', 'intake_form_data',
-  'details', 'tags', 'value',
-]);
-
-function encodeValue(col, val) {
-  if (val === undefined || val === null) return null;
-  if (JSON_COLS.has(col)) return JSON.stringify(val);
-  if (typeof val === 'boolean') return val;
-  return val;
-}
-
-function normalizeRow(row) {
-  if (!row) return null;
-  const out = {};
-  for (const [key, val] of Object.entries(row)) {
-    if (JSON_COLS.has(key) && typeof val === 'string') {
-      try { out[key] = JSON.parse(val); } catch { out[key] = val; }
-    } else {
-      out[key] = val;
-    }
-  }
-  return out;
 }
 
 // ---------- HTTP server ----------
@@ -429,7 +447,7 @@ async function start() {
   server.listen(API_PORT, () => {
     console.log('');
     console.log('  ================================================');
-    console.log('  TEC Hub — PostgreSQL API Server');
+    console.log('  TEC Hub - PostgreSQL API Server');
     console.log('  ================================================');
     console.log(`  PostgreSQL:  ${PG_HOST}:${PG_PORT}/${PG_DATABASE}`);
     console.log(`  API:         http://localhost:${API_PORT}`);

@@ -1,5 +1,6 @@
-// Re-export from the new database/ module for backward compatibility.
-// All new code should import from '@/lib/database' directly.
+// Backward-compatibility shim — re-exports from the database/ module.
+// This file exists so that existing imports of '@/lib/db' and './db'
+// continue to work after the database code was consolidated into ./database.
 export {
   supabase,
   db,

@@ -353,30 +353,23 @@ function Initialize-Env {
     $envContent = Get-Content ".env" -Raw
     if ($null -eq $envContent) { $envContent = "" }
 
-    # VITE_DB_MODE auf supabase setzen (Standard: PostgreSQL)
-    if ($envContent -match "VITE_DB_MODE=") {
-        $envContent = $envContent -replace 'VITE_DB_MODE=.*', "VITE_DB_MODE=supabase"
-    } else {
-        $envContent += "`nVITE_DB_MODE=supabase"
-    }
-
-    # PostgreSQL-Verbindungsdaten eintragen
-    $connStr = "postgresql://$PG_USER`:$PG_PASSWORD@localhost:$PG_PORT/$PG_DB_NAME"
-    if ($envContent -match "DATABASE_URL=") {
-        $envContent = $envContent -replace 'DATABASE_URL=.*', "DATABASE_URL=$connStr"
-    } else {
-        $envContent += "`nDATABASE_URL=$connStr"
-    }
-
-    # Supabase-Verbindungsdaten fuer lokalen Gebrauch
-    if ($envContent -match "VITE_SUPABASE_URL=") {
-        $envContent = $envContent -replace 'VITE_SUPABASE_URL=.*', "VITE_SUPABASE_URL=http://localhost:$PG_PORT"
-    } else {
-        $envContent += "`nVITE_SUPABASE_URL=http://localhost:$PG_PORT"
-    }
-
-    Set-Content -Path ".env" -Value $envContent.Trim() -Encoding UTF8
-    Write-LogOk ".env konfiguriert (PostgreSQL, Datenbank: $PG_DB_NAME)"
+    $envLines = @(
+        "# TEC Hub - Environment Configuration (auto-generated)",
+        "VITE_DB_MODE=postgres",
+        "",
+        "# Local PostgreSQL connection",
+        "PG_HOST=localhost",
+        "PG_PORT=$PG_PORT",
+        "PG_USER=$PG_USER",
+        "PG_PASSWORD=$PG_PASSWORD",
+        "PG_DATABASE=$PG_DB_NAME",
+        "API_PORT=3456",
+        "",
+        "# Browser-side API URL",
+        "VITE_POSTGRES_API_URL=http://localhost:3456"
+    )
+    Set-Content -Path ".env" -Value ($envLines -join "`n") -Encoding UTF8
+    Write-LogOk ".env konfiguriert (PostgreSQL-Modus, Datenbank: $PG_DB_NAME)"
     Write-LogDetail "Verbindung: localhost:$PG_PORT/$PG_DB_NAME (Benutzer: $PG_USER)"
 }
 
@@ -435,10 +428,11 @@ function Show-Summary {
     Write-Host "  Projekt:     $PROJECT_DIR`n"
 
     Write-Host "  Starten mit:  npm run dev`n" -ForegroundColor Cyan
-
-    Write-Host "  Im Browser oeffnen:" -ForegroundColor White
-    Write-Host "    http://localhost:5173/           (Hauptseite)" -ForegroundColor Cyan
-    Write-Host "    http://localhost:5173/dashboard   (Dashboard)`n" -ForegroundColor Cyan
+    Write-Host "  (Startet automatisch die PostgreSQL-API und die Web-App)" -ForegroundColor DarkGray
+    Write-Host "`n  Im Browser oeffnen:" -ForegroundColor White
+    Write-Host "    http://localhost:5173/TEC-Bolt/           (Hauptseite)" -ForegroundColor Cyan
+    Write-Host "    http://localhost:5173/TEC-Bolt/dashboard   (Dashboard)`n" -ForegroundColor Cyan
+    Write-Host "  Admin-Login: admin@techub.local / admin123`n" -ForegroundColor Yellow
 
     if (Test-PostgreSQLService) {
         Write-LogOk "PostgreSQL-Dienst laeuft"

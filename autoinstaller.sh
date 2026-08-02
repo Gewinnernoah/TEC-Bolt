@@ -291,22 +291,22 @@ initialize_env() {
 
     local conn_str="postgresql://${PG_USER}:${PG_PASSWORD}@localhost:${PG_PORT}/${PG_DB_NAME}"
 
-    # VITE_DB_MODE
-    if grep -q "VITE_DB_MODE=" .env; then
-        sed -i.bak "s/VITE_DB_MODE=.*/VITE_DB_MODE=supabase/" .env
-    else
-        echo "VITE_DB_MODE=supabase" >> .env
-    fi
+    cat > .env <<EOF
+# TEC Hub - Environment Configuration (auto-generated)
+VITE_DB_MODE=postgres
 
-    # DATABASE_URL
-    if grep -q "DATABASE_URL=" .env; then
-        sed -i.bak "s|DATABASE_URL=.*|DATABASE_URL=${conn_str}|" .env
-    else
-        echo "DATABASE_URL=${conn_str}" >> .env
-    fi
+# Local PostgreSQL connection
+PG_HOST=localhost
+PG_PORT=${PG_PORT}
+PG_USER=${PG_USER}
+PG_PASSWORD=${PG_PASSWORD}
+PG_DATABASE=${PG_DB_NAME}
+API_PORT=3456
 
-    rm -f .env.bak
-    log_ok ".env konfiguriert (PostgreSQL, Datenbank: $PG_DB_NAME)"
+# Browser-side API URL
+VITE_POSTGRES_API_URL=http://localhost:3456
+EOF
+    log_ok ".env konfiguriert (PostgreSQL-Modus, Datenbank: $PG_DB_NAME)"
     log_detail "Verbindung: localhost:$PG_PORT/$PG_DB_NAME (Benutzer: $PG_USER)"
 }
 
@@ -350,9 +350,11 @@ show_summary() {
     echo "  Projekt:     $PROJECT_DIR\n"
 
     echo -e "  Starten mit:  ${COLOR_CYAN}npm run dev${COLOR_RESET}\n"
-    echo -e "  Im Browser oeffnen:"
-    echo -e "    ${COLOR_CYAN}http://localhost:5173/${COLOR_RESET}           (Hauptseite)"
-    echo -e "    ${COLOR_CYAN}http://localhost:5173/dashboard${COLOR_RESET}  (Dashboard)\n"
+    echo -e "  ${COLOR_GRAY}(Startet automatisch die PostgreSQL-API und die Web-App)${COLOR_RESET}"
+    echo -e "\n  Im Browser oeffnen:"
+    echo -e "    ${COLOR_CYAN}http://localhost:5173/TEC-Bolt/${COLOR_RESET}           (Hauptseite)"
+    echo -e "    ${COLOR_CYAN}http://localhost:5173/TEC-Bolt/dashboard${COLOR_RESET}  (Dashboard)\n"
+    echo -e "  ${COLOR_YELLOW}Admin-Login: admin@techub.local / admin123${COLOR_RESET}\n"
 
     if test_pg_service; then
         log_ok "PostgreSQL-Dienst laeuft"
