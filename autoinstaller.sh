@@ -16,7 +16,7 @@ NODE_MIN_MAJOR="18"
 PG_VERSION="17"
 PG_PORT="5432"
 PG_DB_NAME="techub"
-PG_USER="techub_user"
+PG_USER="postgres"
 PG_PASSWORD="TechHub2024!"
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
