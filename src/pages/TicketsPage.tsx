@@ -24,6 +24,7 @@ export function TicketsPage() {
   const { data: tickets, loading, refresh } = useTickets();
   const [categories, setCategories] = useState<TicketCategory[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [preselectedCategory, setPreselectedCategory] = useState<string>('');
   const [selected, setSelected] = useState<TicketType | null>(null);
   const { data: rooms } = useRooms();
 
@@ -44,7 +45,7 @@ export function TicketsPage() {
     { id: 'all' as const, label: 'Alle Tickets', count: allTickets.length },
     { id: 'open' as const, label: 'Offen', count: openTickets.length },
     { id: 'mine' as const, label: 'Meine Tickets', count: myTickets.length },
-    { id: 'escalated' as const, label: 'Eskaliert', count: escalatedTickets.length },
+    { id: 'escalated' as const, label: 'Dringend', count: escalatedTickets.length },
   ];
 
   return (
@@ -59,7 +60,7 @@ export function TicketsPage() {
           const Icon = CATEGORY_ICONS[cat.icon] ?? Ticket;
           const count = allTickets.filter((t) => t.category_key === cat.key && (t.status === 'open' || t.status === 'in_progress')).length;
           return (
-            <button key={cat.id} onClick={() => setShowCreate(true)} className="card card-hover p-4 text-left">
+            <button key={cat.id} onClick={() => { setPreselectedCategory(cat.id); setShowCreate(true); }} className="card card-hover p-4 text-left">
               <div className="flex items-center justify-between">
                 <div className="rounded-lg p-2" style={{ backgroundColor: `${cat.color}20` }}>
                   <Icon className="h-5 w-5" />
@@ -92,7 +93,7 @@ export function TicketsPage() {
         </div>
       )}
 
-      {showCreate && <CreateTicketModal categories={categories} rooms={rooms ?? []} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); refresh(); }} />}
+      {showCreate && <CreateTicketModal categories={categories} rooms={rooms ?? []} preselectedCategory={preselectedCategory} onClose={() => { setShowCreate(false); setPreselectedCategory(''); }} onSaved={() => { setShowCreate(false); setPreselectedCategory(''); refresh(); }} />}
       {selected && <TicketDetailModal ticket={selected} isStaff={isStaff} onClose={() => setSelected(null)} onUpdated={() => { setSelected(null); refresh(); }} />}
     </div>
   );
@@ -123,15 +124,15 @@ function TicketRow({ ticket, onClick }: { ticket: TicketType; onClick: () => voi
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <span className={cn('badge', TICKET_STATUS_META[ticket.status].bg, TICKET_STATUS_META[ticket.status].color)}>{TICKET_STATUS_META[ticket.status].label}</span>
           <span className={cn('badge', TICKET_PRIORITY_META[ticket.priority].bg, TICKET_PRIORITY_META[ticket.priority].color)}>{TICKET_PRIORITY_META[ticket.priority].label}</span>
-          {ticket.escalated && <span className="badge bg-red-500/15 border-red-500/30 text-red-300"><AlertTriangle className="h-3 w-3" /> Eskaliert</span>}
+          {ticket.escalated && <span className="badge bg-red-500/15 border-red-500/30 text-red-300"><AlertTriangle className="h-3 w-3" /> Dringend</span>}
         </div>
       </div>
     </button>
   );
 }
 
-function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories: TicketCategory[]; rooms: Room[]; onClose: () => void; onSaved: () => void }) {
-  const [categoryId, setCategoryId] = useState('');
+function CreateTicketModal({ categories, rooms, preselectedCategory, onClose, onSaved }: { categories: TicketCategory[]; rooms: Room[]; preselectedCategory?: string; onClose: () => void; onSaved: () => void }) {
+  const [categoryId, setCategoryId] = useState(preselectedCategory ?? '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -191,9 +192,9 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
   };
 
   const submit = async () => {
-    if (!categoryId || !title) { toast('Bitte Kategorie auswaehlen und Titel eingeben', 'error'); return; }
+    if (!categoryId || !title) { toast('Bitte Kategorie auswählen und Titel eingeben', 'error'); return; }
     const cat = categories.find((c) => c.id === categoryId);
-    if (cat?.requires_room && !roomId) { toast('Raumauswahl ist fuer diese Kategorie erforderlich', 'error'); return; }
+    if (cat?.requires_room && !roomId) { toast('Raumauswahl ist für diese Kategorie erforderlich', 'error'); return; }
 
     let ticketNumber: string | null = null;
     try {
@@ -242,14 +243,14 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
           <div>
             <label className="label">Raum * <MapPin className="inline h-3 w-3" /></label>
             <select className="select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-              <option value="">Raum auswaehlen...</option>
+              <option value="">Raum auswählen...</option>
               {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number}) - Etage {r.floor}</option>)}
             </select>
           </div>
         )}
 
         <div>
-          <label className="label">Prioritaet</label>
+          <label className="label">Priorität</label>
           <div className="grid grid-cols-4 gap-2">
             {(['low', 'normal', 'high', 'urgent'] as TicketPriority[]).map((p) => (
               <button key={p} onClick={() => setPriority(p)} className={cn('rounded-lg border px-2 py-2 text-xs font-medium transition-colors capitalize', priority === p ? cn(TICKET_PRIORITY_META[p].bg, TICKET_PRIORITY_META[p].color, 'border-transparent') : 'border-slate-700 text-slate-400')}>{TICKET_PRIORITY_META[p].label}</button>
@@ -265,7 +266,7 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
                 <span className="text-sm font-medium text-amber-300">Geschwindigkeitstest erforderlich</span>
               </div>
               <button onClick={runSpeedtest} disabled={runningSpeedtest} className="btn-secondary text-xs">
-                {runningSpeedtest ? <><Activity className="h-3.5 w-3.5 animate-spin" /> Laeuft...</> : 'Test starten'}
+                {runningSpeedtest ? <><Activity className="h-3.5 w-3.5 animate-spin" /> Läuft...</> : 'Test starten'}
               </button>
             </div>
             {speedtestResult && (
@@ -280,13 +281,24 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
         )}
 
         <div>
-          <label className="label">Fotos (max. 4)</label>
+          <label className="label">Fotos & PDFs (max. 4)</label>
           <div className="flex items-center gap-3">
             <label className="btn-secondary cursor-pointer">
               <Camera className="h-4 w-4" /> Fotos hochladen
-              <input type="file" accept="image/*" multiple className="hidden" onChange={handlePhoto} />
+              <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handlePhoto} />
             </label>
-            {photos.map((p, i) => <img key={i} src={p} alt="" className="h-16 w-16 rounded-lg object-cover border border-slate-700" />)}
+            {photos.map((p, i) => (
+              <div key={i} className="relative group">
+                {p.startsWith('data:application/pdf') ? (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-slate-700 bg-slate-800">
+                    <FileText className="h-6 w-6 text-red-400" />
+                  </div>
+                ) : (
+                  <img src={p} alt="" className="h-16 w-16 rounded-lg object-cover border border-slate-700" />
+                )}
+                <button onClick={() => setPhotos(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -295,6 +307,7 @@ function CreateTicketModal({ categories, rooms, onClose, onSaved }: { categories
 }
 
 function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: TicketType; isStaff: boolean; onClose: () => void; onUpdated: () => void }) {
+  const { profile } = useAuth();
   const [comments, setComments] = useState<TicketComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(false);
@@ -310,9 +323,8 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
 
   const addComment = async () => {
     if (!newComment.trim()) return;
-    const { data: profileData } = await supabase.auth.getUser();
     const { data, error } = await supabase.from('ticket_comments').insert({
-      ticket_id: ticket.id, author_id: profileData.user?.id, comment: newComment, is_internal: isInternal,
+      ticket_id: ticket.id, author_id: profile?.id, comment: newComment, is_internal: isInternal,
     }).select('*, author:profiles(*)').single();
     if (error) { toast(error.message, 'error'); return; }
     setComments([data as TicketComment, ...comments]);
@@ -326,8 +338,7 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
   };
 
   const escalate = async () => {
-    const { data: profileData } = await supabase.auth.getUser();
-    await updateTicket({ escalated: true, escalated_at: new Date().toISOString(), escalated_by: profileData.user?.id, status: 'escalated' });
+    await updateTicket({ escalated: true, escalated_at: new Date().toISOString(), escalated_by: profile?.id, status: 'escalated' });
     escalateModal.closeModal();
     onUpdated();
   };
@@ -344,12 +355,12 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
     <tr><td><strong>Ticket-Nr.</strong></td><td>${ticket.ticket_number}</td></tr>
     <tr><td><strong>Titel</strong></td><td>${ticket.title}</td></tr>
     <tr><td><strong>Kategorie</strong></td><td>${ticket.category?.name ?? ticket.category_key}</td></tr>
-    <tr><td><strong>Prioritaet</strong></td><td>${ticket.priority}</td></tr>
+    <tr><td><strong>Priorität</strong></td><td>${ticket.priority}</td></tr>
     <tr><td><strong>Status</strong></td><td>${ticket.status}</td></tr>
     <tr><td><strong>Raum</strong></td><td>${ticket.room?.name ?? '—'}</td></tr>
     <tr><td><strong>Beschreibung</strong></td><td>${ticket.description ?? '—'}</td></tr>
     <tr><td><strong>Erstellt</strong></td><td>${formatDateTime(ticket.created_at)}</td></tr>
-    <tr><td><strong>Loesung</strong></td><td>${resolution || ticket.resolution_notes || '—'}</td></tr>
+    <tr><td><strong>Lösung</strong></td><td>${resolution || ticket.resolution_notes || '—'}</td></tr>
     </table></body></html>`;
     printHtml(html);
   };
@@ -363,8 +374,8 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
           <button onClick={printReport} className="btn-secondary"><FileText className="h-4 w-4" /> Drucken</button>
           {isStaff && ticket.status !== 'resolved' && ticket.status !== 'closed' && (
             <>
-              <button onClick={escalateModal.openModal} className="btn-secondary text-red-400"><ArrowUp className="h-4 w-4" /> Eskalieren</button>
-              <button onClick={resolve} className="btn-primary"><CheckCircle2 className="h-4 w-4" /> Loesen</button>
+              <button onClick={escalateModal.openModal} className="btn-secondary text-red-400"><ArrowUp className="h-4 w-4" /> Als dringend markieren</button>
+              <button onClick={resolve} className="btn-primary"><CheckCircle2 className="h-4 w-4" /> Lösen</button>
             </>
           )}
         </>
@@ -388,7 +399,7 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
             </select>
           </div>
           <div className="card p-3">
-            <label className="label">Prioritaet</label>
+            <label className="label">Priorität</label>
             <select className="select" value={priority} onChange={(e) => { setPriority(e.target.value as TicketPriority); updateTicket({ priority: e.target.value }); }} disabled={!isStaff}>
               {(Object.keys(TICKET_PRIORITY_META) as TicketPriority[]).map((p) => <option key={p} value={p}>{TICKET_PRIORITY_META[p].label}</option>)}
             </select>
@@ -413,17 +424,28 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
 
         {ticket.photos.length > 0 && (
           <div>
-            <div className="text-xs text-slate-500 mb-2">Fotos</div>
+            <div className="text-xs text-slate-500 mb-2">Fotos & Anhänge</div>
             <div className="flex flex-wrap gap-2">
-              {ticket.photos.map((url, i) => <img key={i} src={url} alt={`Foto ${i + 1}`} className="h-24 w-24 rounded-lg object-cover border border-slate-700" />)}
+              {ticket.photos.map((url, i) => (
+                <button key={i} onClick={() => window.open(url, '_blank')} className="relative group">
+                  {url.startsWith('data:application/pdf') ? (
+                    <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-slate-700 bg-slate-800">
+                      <FileText className="h-8 w-8 text-red-400" />
+                    </div>
+                  ) : (
+                    <img src={url} alt={`Foto ${i + 1}`} className="h-24 w-24 rounded-lg object-cover border border-slate-700 group-hover:border-blue-500 transition-colors" />
+                  )}
+                </button>
+              ))}
             </div>
+            <p className="mt-1 text-[10px] text-slate-600">Klicken zum Öffnen</p>
           </div>
         )}
 
         {isStaff && (
           <div className="card p-3">
-            <label className="label">Loesungs-Notizen</label>
-            <textarea className="input min-h-[60px]" value={resolution} onChange={(e) => setResolution(e.target.value)} placeholder="Loesung dokumentieren..." />
+            <label className="label">Lösungs-Notizen</label>
+            <textarea className="input min-h-[60px]" value={resolution} onChange={(e) => setResolution(e.target.value)} placeholder="Lösung dokumentieren..." />
           </div>
         )}
 
@@ -446,7 +468,7 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
             {comments.length === 0 && <p className="text-xs text-slate-500">Noch keine Kommentare</p>}
           </div>
           <div className="space-y-2">
-            <textarea className="input min-h-[60px]" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Kommentar hinzufuegen..." />
+            <textarea className="input min-h-[60px]" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Kommentar hinzufügen..." />
             <div className="flex items-center justify-between">
               {isStaff && <label className="flex items-center gap-2 text-xs text-slate-400"><input type="checkbox" checked={isInternal} onChange={(e) => setIsInternal(e.target.checked)} className="rounded" /> Interner Kommentar</label>}
               <button onClick={addComment} className="btn-primary text-xs"><Send className="h-3.5 w-3.5" /> Kommentar senden</button>
@@ -455,9 +477,9 @@ function TicketDetailModal({ ticket, isStaff, onClose, onUpdated }: { ticket: Ti
         </div>
       </div>
 
-      <Modal open={escalateModal.open} onClose={escalateModal.closeModal} title="Ticket eskalieren" size="sm"
-        footer={<><button className="btn-secondary" onClick={escalateModal.closeModal}>Abbrechen</button><button className="btn-danger" onClick={escalate}><ArrowUp className="h-4 w-4" /> Jetzt eskalieren</button></>}>
-        <p className="text-sm text-slate-300">Die Eskalation dieses Tickets markiert es als hohe Prioritaet und benachrichtigt Administratoren. Fuer dringende Probleme verwenden, die sofortige Aufmerksamkeit erfordern.</p>
+      <Modal open={escalateModal.open} onClose={escalateModal.closeModal} title="Als dringend markieren" size="sm"
+        footer={<><button className="btn-secondary" onClick={escalateModal.closeModal}>Abbrechen</button><button className="btn-danger" onClick={escalate}><ArrowUp className="h-4 w-4" /> Als dringend markieren</button></>}>
+        <p className="text-sm text-slate-300">Dies markiert das Ticket als dringend und benachrichtigt Administratoren. Für dringende Probleme verwenden, die sofortige Aufmerksamkeit erfordern.</p>
       </Modal>
     </Modal>
   );

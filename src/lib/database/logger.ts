@@ -1,5 +1,5 @@
-// Erweiterte Konsolenprotokollierung fuer die Browser-Konsole.
-// Alle Datenbank- und Auth-Operationen leiten ihre Fehler ueber dieses Modul,
+// Erweiterte Konsolenprotokollierung für die Browser-Konsole.
+// Alle Datenbank- und Auth-Operationen leiten ihre Fehler über dieses Modul,
 // so dass Probleme mit vollem Kontext sichtbar werden.
 //
 // Farb-Konvention:
@@ -39,12 +39,12 @@ function hintForError(msg: string): string | null {
   if (m.includes('invalid login credentials') || m.includes('password')) return 'Passwort oder Email ist falsch.';
   if (m.includes('user not found') || m.includes('benutzer')) return 'Benutzer existiert nicht oder ist deaktiviert.';
   if (m.includes('database') && m.includes('not') && m.includes('exist')) return 'Datenbank existiert nicht. Installer erneut ausfuehren.';
-  if (m.includes('econnrefused') || m.includes('network') || m.includes('fetch')) return 'Datenbank nicht erreichbar. PostgreSQL-Dienst pruefen.';
-  if (m.includes('permission') || m.includes('denied')) return 'Fehlende Berechtigungen. Benutzerrechte in PostgreSQL pruefen.';
+  if (m.includes('econnrefused') || m.includes('network') || m.includes('fetch')) return 'Datenbank nicht erreichbar. PostgreSQL-Dienst prüfen.';
+  if (m.includes('permission') || m.includes('denied')) return 'Fehlende Berechtigungen. Benutzerrechte in PostgreSQL prüfen.';
   if (m.includes('port') && m.includes('use')) return 'Port ist bereits belegt. Anderen Port konfigurieren oder Dienst stoppen.';
   if (m.includes('rate limit') || m.includes('too many')) return 'Zu viele Anfragen. Spaeter erneut versuchen.';
   if (m.includes('jwt') || m.includes('token') || m.includes('expired')) return 'Sitzung abgelaufen. Bitte neu anmelden.';
-  if (m.includes('timeout')) return 'Zeitueberschreitung bei der Datenbankabfrage. Verbindung pruefen.';
+  if (m.includes('timeout')) return 'Zeitüberschreitung bei der Datenbankabfrage. Verbindung prüfen.';
   if (m.includes('unique') || m.includes('duplicate')) return 'Doppelter Eintrag. Wert bereits vorhanden.';
   if (m.includes('foreign key') || m.includes('violat')) return 'Referenz auf nicht existierenden Datensatz.';
   return null;

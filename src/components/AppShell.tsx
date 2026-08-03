@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Menu, X, LogOut, Bell, Fingerprint, ChevronDown, Shield, Monitor, Lock, Home,
+  Menu, X, LogOut, Bell, Fingerprint, ChevronDown, Shield, Monitor, Lock,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { NAV_ITEMS, GROUP_LABELS, type NavItem } from '@/lib/nav';
@@ -67,13 +67,6 @@ export function AppShell({ current, onNavigate, children }: AppShellProps) {
       </nav>
 
       <div className="border-t border-slate-800 p-3">
-        <button
-          onClick={() => navigateTo('landing')}
-          className="sidebar-link w-full text-slate-500 hover:text-blue-400"
-        >
-          <Home className="h-4 w-4" />
-          <span>Zur Hauptseite</span>
-        </button>
         <button
           onClick={() => onNavigate('tec-room')}
           className="sidebar-link w-full text-slate-500 hover:text-cyan-400"

@@ -1,6 +1,15 @@
 // ====== Database row types ======
 
-export type UserRole = 'admin' | 'staff' | 'teacher';
+export type UserRole = 'admin' | 'staff' | 'teacher' | 'student';
+
+export interface UserPermissions {
+  can_print_3d: boolean;
+  can_borrow: boolean;
+  can_manage_inventory: boolean;
+  can_manage_events: boolean;
+  can_view_analytics: boolean;
+  can_create_tickets: boolean;
+}
 export type DeviceStatus = 'available' | 'borrowed' | 'maintenance' | 'defective' | 'internal_use';
 export type TrackingMethod = 'barcode' | 'nfc';
 export type LoanStatus = 'active' | 'returned' | 'overdue';
@@ -26,6 +35,8 @@ export interface Profile {
   webauthn_credentials: WebAuthnCredential[];
   is_active: boolean;
   exempt_auto_logout: boolean;
+  must_change_password: boolean;
+  permissions: UserPermissions | null;
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +66,7 @@ export interface Device {
   manufacturer: string | null;
   model: string | null;
   serial_number: string | null;
+  operating_system: string | null;
   status: DeviceStatus;
   tracking_method: TrackingMethod;
   barcode: string | null;
@@ -217,6 +229,8 @@ export interface LendingLoan {
   return_condition: ConditionRating | null;
   return_notes: string | null;
   return_staff_id: string | null;
+  return_signature_data: string | null;
+  return_signature_name: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -242,6 +256,7 @@ export interface Consumable {
   unit: string;
   current_stock: number;
   min_stock: number;
+  max_stock: number;
   reorder_qty: number;
   reorder_link: string | null;
   notes: string | null;
@@ -309,6 +324,8 @@ export interface PrintRequest {
   started_at: string | null;
   completed_at: string | null;
   failed_reason: string | null;
+  bambu_job_id: string | null;
+  bambu_printer_id: string | null;
   created_at: string;
   updated_at: string;
   teacher?: Profile | null;
@@ -496,6 +513,7 @@ export interface RepairRecord {
   resolution: string | null;
   cost: number;
   is_recurring: boolean;
+  maintenance_started_at: string | null;
   created_at: string;
   updated_at: string;
   device?: Device | null;
@@ -553,6 +571,25 @@ export interface DeviceNote {
   is_internal: boolean;
   created_at: string;
   author?: Profile | null;
+}
+
+export interface RepairComment {
+  id: string;
+  repair_id: string;
+  author_id: string;
+  comment: string;
+  is_internal: boolean;
+  created_at: string;
+  author?: Profile | null;
+}
+
+export interface Holiday {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  type: 'vacation' | 'holiday' | 'closed';
+  created_at: string;
 }
 
 export interface SystemSetting {

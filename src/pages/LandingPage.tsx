@@ -9,14 +9,14 @@ import { cn } from '@/lib/utils';
 
 export function LandingPage() {
   const features = [
-    { icon: Package, title: 'Inventarverwaltung', desc: 'Alle Geraete zentral erfassen, mit Barcode, NFC und QR-Code-Tracking.' },
-    { icon: HandHelping, title: 'Ausleihverwaltung', desc: 'Lehrer koennen Geraete anfragen, Personal genehmigt und dokumentiert Ausleihen.' },
-    { icon: Printer, title: '3D-Druck-Service', desc: 'Druckauftraege einreichen, Fortschritt verfolgen und Filament-Bestaende verwalten.' },
-    { icon: Ticket, title: 'Support-Tickets', desc: 'Technische Probleme melden und bearbeiten, mit Eskalationsstufen und Prioritaeten.' },
+    { icon: Package, title: 'Inventarverwaltung', desc: 'Alle Geräte zentral erfassen, mit Barcode, NFC und QR-Code-Tracking.' },
+    { icon: HandHelping, title: 'Ausleihverwaltung', desc: 'Lehrer koennen Geräte anfragen, Personal genehmigt und dokumentiert Ausleihen.' },
+    { icon: Printer, title: '3D-Druck-Service', desc: 'Druckaufträge einreichen, Fortschritt verfolgen und Filament-Bestaende verwalten.' },
+    { icon: Ticket, title: 'Support-Tickets', desc: 'Technische Probleme melden und bearbeiten, mit Dringlichkeitsstufen und Prioritaeten.' },
     { icon: Radio, title: 'Netzwerk & Gebaeude', desc: 'WLAN-Messungen, Gebaeudeplaene und Raumverwaltung an einem Ort.' },
     { icon: Mic2, title: 'Events & Audimax', desc: 'Veranstaltungen planen mit Buehnenplaenen, Equipment-Listen und Proben.' },
-    { icon: BarChart3, title: 'Analyse & Berichte', desc: 'Auslastung, Ausleihstatistiken und Geraete-Zustaende auswerten.' },
-    { icon: BookOpen, title: 'FAQ & Wissensdatenbank', desc: 'Haeufige Fragen und Loesungen zentral fuer alle verfuegbar machen.' },
+    { icon: BarChart3, title: 'Analyse & Berichte', desc: 'Auslastung, Ausleihstatistiken und Geräte-Zustaende auswerten.' },
+    { icon: BookOpen, title: 'FAQ & Wissensdatenbank', desc: 'Haeufige Fragen und Loesungen zentral für alle verfügbar machen.' },
   ];
 
   return (
@@ -62,7 +62,7 @@ export function LandingPage() {
             School TEC Hub
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-400">
-            Die komplette Plattform fuer Inventarverwaltung, Ausleihen, 3D-Druck,
+            Die komplette Plattform für Inventarverwaltung, Ausleihen, 3D-Druck,
             Support-Tickets und Veranstaltungstechnik — alles an einem Ort.
           </p>
 

@@ -1,4 +1,4 @@
-import { supabase } from './db';
+import { supabase } from './database';
 import type { Profile, WebAuthnCredential } from './types';
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {

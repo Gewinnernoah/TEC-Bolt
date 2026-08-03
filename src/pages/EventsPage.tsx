@@ -129,13 +129,13 @@ function EventFormModal({ event, rooms, onClose, onSaved }: { event: SchoolEvent
           <div><label className="label">Event-Typ</label>
             <select className="select" value={eventType} onChange={(e) => setEventType(e.target.value)}>
               <option value="auditorium">Audimax</option><option value="concert">Konzert</option>
-              <option value="presentation">Praesentation</option><option value="ceremony">Feier</option>
+              <option value="presentation">Präsentation</option><option value="ceremony">Feier</option>
               <option value="meeting">Besprechung</option><option value="other">Sonstiges</option>
             </select>
           </div>
           <div><label className="label">Raum / Veranstaltungsraum</label>
             <select className="select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-              <option value="">Veranstaltungsort auswaehlen...</option>
+              <option value="">Veranstaltungsort auswählen...</option>
               {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number})</option>)}
             </select>
           </div>
@@ -239,7 +239,7 @@ function EventDetailModal({ event, onClose, onUpdated }: { event: SchoolEvent; o
 
           <div className="space-y-2">
             <div className="flex gap-2">
-              <input className="input" value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTask()} placeholder="Aufgabe hinzufuegen..." />
+              <input className="input" value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTask()} placeholder="Aufgabe hinzufügen..." />
               <select className="select w-auto" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
                 <option value="">Nicht zugewiesen</option>
                 {profiles.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}

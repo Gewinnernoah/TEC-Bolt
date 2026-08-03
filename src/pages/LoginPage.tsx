@@ -8,19 +8,18 @@ import {
   canUseBiometric, verifyFingerprint, getStoredFingerprintEmail,
   getProfileForFingerprint,
 } from '@/lib/webauthn';
-import type { UserRole } from '@/lib/types';
-import { ROLE_META } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { navigateTo } from '@/lib/router';
 
 type Mode = 'login' | 'register' | 'forgot';
 
-export function LoginPage({ locked = false }: { locked?: boolean }) {
+export function LoginPage({ locked = false, mustChangePassword = false }: { locked?: boolean; mustChangePassword?: boolean }) {
   const { signIn, signUp, unlock, resetPassword } = useAuth();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<UserRole>('teacher');
+  // Rolle wird bei der Registrierung NICHT mehr selbst ausgewählt — Standard: teacher
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,12 +59,12 @@ export function LoginPage({ locked = false }: { locked?: boolean }) {
     setError(null);
     setSuccess(null);
     setLoading(true);
-    const { error: err } = await signUp(email, password, fullName, role);
+    const { error: err } = await signUp(email, password, fullName);
     setLoading(false);
     if (err) {
       setError(err);
     } else {
-      setSuccess('Konto erfolgreich erstellt. Sie koennen sich jetzt anmelden.');
+      setSuccess('Konto erfolgreich erstellt. Sie können sich jetzt anmelden.');
       setMode('login');
       setPassword('');
     }
@@ -81,7 +80,7 @@ export function LoginPage({ locked = false }: { locked?: boolean }) {
     if (err) {
       setError(err);
     } else {
-      setSuccess('Eine Email zum Zuruecksetzen des Passworts wurde gesendet. Bitte den Posteingang pruefen.');
+      setSuccess('Eine E-Mail zum Zurücksetzen des Passworts wurde gesendet. Bitte den Posteingang prüfen.');
     }
   };
 
@@ -102,7 +101,7 @@ export function LoginPage({ locked = false }: { locked?: boolean }) {
     try {
       const profile = await getProfileForFingerprint(biometricEmail);
       if (!profile || !profile.fingerprint_enrolled) {
-        setError('Kein Fingerabdruck fuer dieses Konto registriert.');
+        setError('Kein Fingerabdruck für dieses Konto registriert.');
         setBiometricLoading(false);
         return;
       }
@@ -138,7 +137,7 @@ export function LoginPage({ locked = false }: { locked?: boolean }) {
             <h1 className="mt-4 text-2xl font-bold text-slate-100">Sitzung gesperrt</h1>
             <p className="mt-1 text-sm text-slate-400">
               <Clock className="mr-1 inline h-3.5 w-3.5" />
-              Aus Inaktivitaet automatisch gesperrt
+              Aus Inaktivität automatisch gesperrt
             </p>
           </div>
 
@@ -284,7 +283,7 @@ export function LoginPage({ locked = false }: { locked?: boolean }) {
                 className="btn-ghost w-full"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Zurueck zur Anmeldung
+                Zurück zur Anmeldung
               </button>
             </form>
           ) : mode === 'login' ? (
@@ -341,7 +340,7 @@ export function LoginPage({ locked = false }: { locked?: boolean }) {
           ) : (
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
-                <label className="label">Vollstaendiger Name</label>
+                <label className="label">Vollständiger Name</label>
                 <input
                   type="text"
                   required
@@ -387,25 +386,8 @@ export function LoginPage({ locked = false }: { locked?: boolean }) {
                   </button>
                 </div>
               </div>
-              <div>
-                <label className="label">Rolle</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(Object.keys(ROLE_META) as UserRole[]).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setRole(r)}
-                      className={cn(
-                        'rounded-lg border px-2 py-2 text-xs font-medium transition-colors',
-                        role === r
-                          ? 'border-blue-500 bg-blue-600/15 text-blue-300'
-                          : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300',
-                      )}
-                    >
-                      {ROLE_META[r].label}
-                    </button>
-                  ))}
-                </div>
+              <div className="rounded-lg border border-blue-500/20 bg-blue-950/20 px-3 py-2.5 text-xs text-blue-300">
+                Neue Konten werden als «Lehrer» angelegt. Die Rolle kann später von einem Administrator geändert werden.
               </div>
               <button type="submit" disabled={loading} className="btn-primary w-full">
                 <UserPlus className="h-4 w-4" />
@@ -429,8 +411,15 @@ export function LoginPage({ locked = false }: { locked?: boolean }) {
         </div>
 
         <p className="mt-4 text-center text-xs text-slate-600">
-          Geschuetzt durch Passwort- & Biometrie-Authentifizierung · Auto-Sperre bei Inaktivitaet
+          Geschützt durch Passwort- & Biometrie-Authentifizierung · Auto-Sperre bei Inaktivität
         </p>
+        <div className="mt-3 flex items-center justify-center gap-4 text-xs">
+          <button onClick={() => navigateTo('faq-public')} className="text-slate-500 hover:text-blue-400 transition-colors">FAQ</button>
+          <span className="text-slate-700">·</span>
+          <button onClick={() => navigateTo('impressum')} className="text-slate-500 hover:text-blue-400 transition-colors">Impressum</button>
+          <span className="text-slate-700">·</span>
+          <button onClick={() => navigateTo('dokumentation')} className="text-slate-500 hover:text-blue-400 transition-colors">Dokumentation</button>
+        </div>
       </div>
     </div>
   );

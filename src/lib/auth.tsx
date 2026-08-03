@@ -26,13 +26,17 @@ interface AuthContextValue {
   profile: Profile | null;
   loading: boolean;
   locked: boolean;
+  authError: string | null;
+  mustChangePassword: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName: string, role?: UserRole) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   lock: () => void;
   unlock: (password: string) => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
+  changePassword: (newPassword: string) => Promise<{ error: string | null }>;
   refreshProfile: () => Promise<void>;
+  clearAuthError: () => void;
   isStaff: boolean;
   isAdmin: boolean;
 }
@@ -44,6 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadProfile = useCallback(async (userId: string): Promise<Profile | null> => {
@@ -59,21 +65,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data as Profile | null;
   }, []);
 
-  const refreshProfile = useCallback(async () => {
-    if (session?.user?.id) {
-      const p = await loadProfile(session.user.id);
-      setProfile(p);
-    }
-  }, [session, loadProfile]);
-
   const signOut = useCallback(async () => {
     await logActivity('auth.signout');
     await supabase.auth.signOut();
     setProfile(null);
     setSession(null);
     setLocked(false);
+    setMustChangePassword(false);
     try { localStorage.removeItem(LOCK_STORAGE_KEY); } catch { /* ignore */ }
   }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (session?.user?.id) {
+      const p = await loadProfile(session.user.id);
+      setProfile(p);
+    }
+  }, [session, loadProfile]);
 
   const lock = useCallback(() => {
     if (!session) return;
@@ -128,8 +135,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const s = data?.session ?? null;
         setSession(s);
         if (s?.user?.id) {
-          loadProfile(s.user.id).then((p) => {
-            if (mounted) { setProfile(p); setLoading(false); }
+          loadProfile(s.user.id).then(async (p) => {
+            if (!mounted) return;
+            // Inactive user lock — block login even for existing sessions.
+            if (p && p.is_active === false) {
+              await signOut();
+              setAuthError('Ihr Konto wurde deaktiviert.');
+              setLoading(false);
+              return;
+            }
+            setProfile(p);
+            setMustChangePassword(Boolean(p?.must_change_password));
+            setLoading(false);
           });
         } else {
           setLoading(false);
@@ -143,10 +160,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(s);
         if (s?.user?.id) {
           const p = await loadProfile(s.user.id);
-          if (mounted) setProfile(p);
+          if (!mounted) return;
+          // Inactive user lock on every auth state transition.
+          if (p && p.is_active === false) {
+            await signOut();
+            setAuthError('Ihr Konto wurde deaktiviert.');
+            setLoading(false);
+            return;
+          }
+          setProfile(p);
+          setMustChangePassword(Boolean(p?.must_change_password));
         } else {
           setProfile(null);
           setLocked(false);
+          setMustChangePassword(false);
         }
         setLoading(false);
       })();
@@ -156,16 +183,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       try { sub?.data?.subscription?.unsubscribe?.(); } catch { /* ignore */ }
     };
-  }, [loadProfile]);
+  }, [loadProfile, signOut]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: translateAuthError(error.message) };
+
+    // Fetch profile immediately to enforce the inactive-user lock before the
+    // auth-state-change effect resolves, so disabled users never see the app.
+    if (data.user?.id) {
+      const p = await loadProfile(data.user.id);
+      if (p && p.is_active === false) {
+        await signOut();
+        return { error: 'Ihr Konto wurde deaktiviert.' };
+      }
+      setMustChangePassword(Boolean(p?.must_change_password));
+    }
+
     await logActivity('auth.signin');
     return { error: null };
-  }, []);
+  }, [loadProfile, signOut]);
 
-  const signUp = useCallback(async (email: string, password: string, fullName: string, role: UserRole = 'teacher') => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
+    // Role is NOT user-selectable. New accounts always default to 'teacher'.
+    const role: UserRole = 'teacher';
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -186,18 +227,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   }, []);
 
+  const changePassword = useCallback(async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { error: translateAuthError(error.message) };
+
+    // Clear the must-change flag on the profile so the UI stops prompting.
+    if (session?.user?.id) {
+      await supabase.from('profiles').update({ must_change_password: false }).eq('id', session.user.id);
+      setMustChangePassword(false);
+    }
+    await logActivity('auth.password_change');
+    return { error: null };
+  }, [session]);
+
+  const clearAuthError = useCallback(() => setAuthError(null), []);
+
   const value: AuthContextValue = {
     session,
     profile,
     loading,
     locked,
+    authError,
+    mustChangePassword,
     signIn,
     signUp,
     signOut,
     lock,
     unlock,
     resetPassword,
+    changePassword,
     refreshProfile,
+    clearAuthError,
     isStaff: profile?.role === 'admin' || profile?.role === 'staff',
     isAdmin: profile?.role === 'admin',
   };

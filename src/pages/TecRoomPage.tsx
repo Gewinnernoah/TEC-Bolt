@@ -99,7 +99,7 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
             <div className="flex items-center gap-2">
               <CircleDot className="h-5 w-5 text-blue-400 animate-pulse" />
               <div>
-                <div className="text-sm font-semibold text-slate-200">{lesson.current > 0 && lesson.current <= lesson.total ? `Stunde ${lesson.current} / ${lesson.total}` : 'Ausserhalb der Schulzeiten'}</div>
+                <div className="text-sm font-semibold text-slate-200">{lesson.current > 0 && lesson.current <= lesson.total ? `Stunde ${lesson.current} / ${lesson.total}` : 'Außerhalb der Schulzeiten'}</div>
                 <div className="text-xs text-slate-500">Aktuelle Stunde</div>
               </div>
             </div>
@@ -118,8 +118,8 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
         {/* Traffic lights */}
         <div className="grid grid-cols-4 gap-3 flex-shrink-0">
           <TrafficLight icon={Server} title="Systemstatus" status={stats.totalDevices > 0 ? 'green' : 'amber'} detail={stats.totalDevices > 0 ? 'Betriebsbereit' : 'Wird geladen'} />
-          <TrafficLight icon={Wifi} title="WLAN-Zustand" status={stats.poorWifi === 0 ? 'green' : stats.poorWifi <= 2 ? 'amber' : 'red'} detail={`${stats.poorWifi} Raeume kritisch`} />
-          <TrafficLight icon={HandHelping} title="Ausleihe" status={stats.overdueLoans === 0 ? 'green' : stats.overdueLoans <= 2 ? 'amber' : 'red'} detail={`${stats.overdueLoans} ueberfaellig`} />
+          <TrafficLight icon={Wifi} title="WLAN-Zustand" status={stats.poorWifi === 0 ? 'green' : stats.poorWifi <= 2 ? 'amber' : 'red'} detail={`${stats.poorWifi} Räume kritisch`} />
+          <TrafficLight icon={HandHelping} title="Ausleihe" status={stats.overdueLoans === 0 ? 'green' : stats.overdueLoans <= 2 ? 'amber' : 'red'} detail={`${stats.overdueLoans} überfällig`} />
           <TrafficLight icon={Ticket} title="Tickets" status={stats.openTickets === 0 ? 'green' : stats.openTickets <= 3 ? 'amber' : 'red'} detail={`${stats.openTickets} offen`} />
         </div>
 
@@ -136,7 +136,7 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
                       <span className="text-sm font-medium text-slate-200 truncate">{loan.teacher?.full_name ?? '—'}</span>
                       {overdue && <AlertTriangle className="h-4 w-4 text-red-400 flex-shrink-0" />}
                     </div>
-                    <div className="text-xs text-slate-500">{loan.items?.length ?? 0} Geraet(e) · Faellig {formatDateTime(loan.expected_return_at)}</div>
+                    <div className="text-xs text-slate-500">{loan.items?.length ?? 0} Gerät(e) · Fällig {formatDateTime(loan.expected_return_at)}</div>
                   </div>
                 );
               })}
@@ -164,7 +164,7 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
           </Panel>
 
           {/* Device status */}
-          <Panel title="Geraete-Status" icon={Package} count={stats.totalDevices} className="col-span-4">
+          <Panel title="Geräte-Status" icon={Package} count={stats.totalDevices} className="col-span-4">
             <div className="grid grid-cols-5 gap-2 h-full items-center">
               {(Object.keys(DEVICE_STATUS_META) as Device['status'][]).map((status) => {
                 const count = devices.filter((d) => d.status === status).length;
@@ -208,7 +208,7 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
               </div>
               {stats.poorWifi > 0 && (
                 <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-2 text-xs text-red-300">
-                  <AlertTriangle className="inline h-3.5 w-3.5 mr-1" /> {stats.poorWifi} Raeume mit schlechter Netzwerkqualitaet
+                  <AlertTriangle className="inline h-3.5 w-3.5 mr-1" /> {stats.poorWifi} Räume mit schlechter Netzwerkqualität
                 </div>
               )}
             </div>
@@ -217,12 +217,12 @@ export function TecRoomPage({ onExit }: { onExit: () => void }) {
           {/* Urgent notifications */}
           <Panel title="Dringende Benachrichtigungen" icon={Zap} className="col-span-4">
             <div className="scrollbar-thin h-full overflow-y-auto space-y-1.5">
-              {stats.overdueLoans > 0 && <UrgentItem text={`${stats.overdueLoans} ueberfaellige Ausleihen muessen zurueckgegeben werden`} color="red" />}
-              {stats.escalatedTickets > 0 && <UrgentItem text={`${stats.escalatedTickets} eskalierte Tickets brauchen Aufmerksamkeit`} color="red" />}
-              {stats.poorWifi > 0 && <UrgentItem text={`${stats.poorWifi} Raeume mit WLAN-Problemen`} color="amber" />}
+              {stats.overdueLoans > 0 && <UrgentItem text={`${stats.overdueLoans} überfällige Ausleihen müssen zurückgegeben werden`} color="red" />}
+              {stats.escalatedTickets > 0 && <UrgentItem text={`${stats.escalatedTickets} dringende Tickets brauchen Aufmerksamkeit`} color="red" />}
+              {stats.poorWifi > 0 && <UrgentItem text={`${stats.poorWifi} Räume mit WLAN-Problemen`} color="amber" />}
               {stats.lowConsumables > 0 && <UrgentItem text={`${stats.lowConsumables} Verbrauchsmaterialien mit niedrigem Bestand`} color="orange" />}
-              {stats.defective > 0 && <UrgentItem text={`${stats.defective} defekte Geraete brauchen Reparatur`} color="red" />}
-              {stats.maintenance > 0 && <UrgentItem text={`${stats.maintenance} Geraete in Wartung`} color="amber" />}
+              {stats.defective > 0 && <UrgentItem text={`${stats.defective} defekte Geräte brauchen Reparatur`} color="red" />}
+              {stats.maintenance > 0 && <UrgentItem text={`${stats.maintenance} Geräte in Wartung`} color="amber" />}
               {stats.overdueLoans === 0 && stats.escalatedTickets === 0 && stats.poorWifi === 0 && stats.lowConsumables === 0 && stats.defective === 0 && (
                 <div className="text-center text-sm text-emerald-400 py-8"><TrendingUp className="mx-auto h-6 w-6 mb-1" /> Alle Systeme in Ordnung</div>
               )}

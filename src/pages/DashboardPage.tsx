@@ -65,14 +65,14 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
     <div className="space-y-6">
       <PageHeader
         title={`Willkommen, ${profile.full_name.split(' ')[0]}`}
-        subtitle="Echtzeit-Ueberblick der Schul-Technik"
+        subtitle="Echtzeit-Überblick der Schul-Technik"
         actions={
           <div className="card px-4 py-2">
             <div className="text-xs text-slate-400">Aktuelle Stunde</div>
             <div className="flex items-center gap-2">
               <CircleDot className="h-4 w-4 text-blue-400 animate-pulse" />
               <span className="text-lg font-semibold text-slate-100">
-                {lesson.current > 0 && lesson.current <= lesson.total ? `Stunde ${lesson.current}` : 'Ausserhalb der Schulzeiten'}
+                {lesson.current > 0 && lesson.current <= lesson.total ? `Stunde ${lesson.current}` : 'Außerhalb der Schulzeiten'}
               </span>
             </div>
           </div>
@@ -95,7 +95,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
         <div className="flex items-center gap-2">
           <div className={cn('badge', stats.overdueLoans > 0 ? 'bg-red-500/15 border-red-500/30 text-red-300' : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300')}>
             <AlertTriangle className="h-3 w-3" />
-            {stats.overdueLoans} ueberfaellig
+            {stats.overdueLoans} überfällig
           </div>
           <div className="badge bg-blue-500/15 border-blue-500/30 text-blue-300">
             <Activity className="h-3 w-3" />
@@ -111,9 +111,9 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <StatCard icon={Package} label="Verfuegbare Geraete" value={stats.available} total={stats.totalDevices} color="emerald" onClick={() => onNavigate('inventory')} />
+        <StatCard icon={Package} label="Verfügbare Geräte" value={stats.available} total={stats.totalDevices} color="emerald" onClick={() => onNavigate('inventory')} />
         <StatCard icon={HandHelping} label="Aktive Ausleihen" value={stats.activeLoans} color="blue" onClick={() => onNavigate('lending')} />
-        <StatCard icon={Printer} label="Druckauftraege" value={stats.printingJobs} color="cyan" onClick={() => onNavigate('printing')} />
+        <StatCard icon={Printer} label="Druckaufträge" value={stats.printingJobs} color="cyan" onClick={() => onNavigate('printing')} />
         <StatCard icon={Ticket} label="Offene Tickets" value={stats.openTickets} color="amber" onClick={() => onNavigate('tickets')} />
         <StatCard icon={Wifi} label="Schlechtes WLAN" value={stats.poorWifi} color="red" onClick={() => onNavigate('monitoring')} />
         <StatCard icon={Battery} label="Niedriger Bestand" value={stats.lowConsumables} color="orange" onClick={() => onNavigate('inventory')} />
@@ -130,13 +130,13 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
         <StatusLight
           title="WLAN-Zustand"
           status={stats.poorWifi === 0 ? 'green' : stats.poorWifi <= 2 ? 'amber' : 'red'}
-          detail={stats.poorWifi === 0 ? 'Alle Raeume in Ordnung' : `${stats.poorWifi} Raeume brauchen Aufmerksamkeit`}
+          detail={stats.poorWifi === 0 ? 'Alle Räume in Ordnung' : `${stats.poorWifi} Räume brauchen Aufmerksamkeit`}
           icon={Wifi}
         />
         <StatusLight
           title="Ausleihe"
           status={stats.overdueLoans === 0 ? 'green' : stats.overdueLoans <= 2 ? 'amber' : 'red'}
-          detail={stats.overdueLoans === 0 ? `${stats.activeLoans} aktiv, keine ueberfaelligen` : `${stats.overdueLoans} ueberfaellige Ausleihen`}
+          detail={stats.overdueLoans === 0 ? `${stats.activeLoans} aktiv, keine überfälligen` : `${stats.overdueLoans} überfällige Ausleihen`}
           icon={HandHelping}
         />
         <StatusLight
@@ -171,7 +171,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
           </div>
           <div className="scrollbar-thin max-h-80 overflow-y-auto">
             {(printRequests ?? []).filter((p) => p.status === 'printing' || p.status === 'queued').length === 0 ? (
-              <EmptyState icon={Printer} title="Keine aktiven Druckauftraege" />
+              <EmptyState icon={Printer} title="Keine aktiven Druckaufträge" />
             ) : (
               (printRequests ?? []).filter((p) => p.status === 'printing' || p.status === 'queued').slice(0, 6).map((job) => <PrintRow key={job.id} job={job} />)
             )}
@@ -201,19 +201,19 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
           </div>
           <div className="scrollbar-thin max-h-80 overflow-y-auto p-3 space-y-2">
             {stats.overdueLoans > 0 && (
-              <UrgentItem icon={AlertTriangle} color="red" title={`${stats.overdueLoans} ueberfaellige Ausleihen`} message="Geraete muessen sofort zurueckgegeben werden" onClick={() => onNavigate('lending')} />
+              <UrgentItem icon={AlertTriangle} color="red" title={`${stats.overdueLoans} überfällige Ausleihen`} message="Geräte müssen sofort zurückgegeben werden" onClick={() => onNavigate('lending')} />
             )}
             {stats.pendingRequests > 0 && (
               <UrgentItem icon={CalendarClock} color="amber" title={`${stats.pendingRequests} ausstehende Ausleihanfragen`} message="Wartet auf Genehmigung" onClick={() => onNavigate('lending')} />
             )}
             {stats.poorWifi > 0 && (
-              <UrgentItem icon={Wifi} color="red" title={`${stats.poorWifi} Raeume mit schlechtem WLAN`} message="Netzwerkprobleme erkannt" onClick={() => onNavigate('monitoring')} />
+              <UrgentItem icon={Wifi} color="red" title={`${stats.poorWifi} Räume mit schlechtem WLAN`} message="Netzwerkprobleme erkannt" onClick={() => onNavigate('monitoring')} />
             )}
             {stats.lowConsumables > 0 && (
               <UrgentItem icon={Battery} color="orange" title={`${stats.lowConsumables} Verbrauchsmaterialien mit niedrigem Bestand`} message="Nachbestellung noetig" onClick={() => onNavigate('inventory')} />
             )}
             {stats.defective > 0 && (
-              <UrgentItem icon={AlertTriangle} color="red" title={`${stats.defective} defekte Geraete`} message="Reparatur noetig" onClick={() => onNavigate('inventory')} />
+              <UrgentItem icon={AlertTriangle} color="red" title={`${stats.defective} defekte Geräte`} message="Reparatur noetig" onClick={() => onNavigate('inventory')} />
             )}
             {stats.overdueLoans === 0 && stats.pendingRequests === 0 && stats.poorWifi === 0 && stats.lowConsumables === 0 && stats.defective === 0 && (
               <EmptyState icon={TrendingUp} title="Alle in Ordnung" message="Keine dringenden Benachrichtigungen" />
@@ -225,7 +225,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (id: string) => void
       {/* Device status breakdown */}
       <div className="card">
         <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-          <h3 className="text-sm font-semibold text-slate-200">Geraete-Status-Ueberblick</h3>
+          <h3 className="text-sm font-semibold text-slate-200">Geräte-Status-Überblick</h3>
         </div>
         <div className="grid grid-cols-2 gap-4 p-5 md:grid-cols-5">
           {(Object.keys(DEVICE_STATUS_META) as Device['status'][]).map((status) => {
@@ -305,10 +305,10 @@ function LoanRow({ loan }: { loan: LendingLoan }) {
     <div className={cn('flex items-center justify-between px-5 py-2.5 border-b border-slate-800/50 hover:bg-slate-800/30', overdue && 'bg-red-950/20')}>
       <div className="min-w-0">
         <div className="text-sm font-medium text-slate-200 truncate">{loan.teacher?.full_name ?? 'Unbekannt'}</div>
-        <div className="text-xs text-slate-500">{loan.items?.length ?? 0} Geraet(e) · {loan.room?.name ?? 'Kein Raum'}</div>
+        <div className="text-xs text-slate-500">{loan.items?.length ?? 0} Gerät(e) · {loan.room?.name ?? 'Kein Raum'}</div>
       </div>
       <div className="text-right">
-        <div className={cn('text-xs', overdue ? 'text-red-400' : 'text-slate-400')}>Faellig {formatDateTime(loan.expected_return_at)}</div>
+        <div className={cn('text-xs', overdue ? 'text-red-400' : 'text-slate-400')}>Fällig {formatDateTime(loan.expected_return_at)}</div>
         <span className={cn('badge mt-0.5', LOAN_STATUS_META[loan.status].bg, LOAN_STATUS_META[loan.status].color, 'border-transparent')}>
           {LOAN_STATUS_META[loan.status].label}
         </span>

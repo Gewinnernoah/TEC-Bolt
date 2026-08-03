@@ -40,8 +40,8 @@ export function AnalyticsPage() {
 
   const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'lending', label: 'Ausleihe', icon: HandHelping },
-    { id: 'devices', label: 'Geraete', icon: Package },
-    { id: 'rooms', label: 'Raeume', icon: BarChart3 },
+    { id: 'devices', label: 'Geräte', icon: Package },
+    { id: 'rooms', label: 'Räume', icon: BarChart3 },
     { id: 'wifi', label: 'WLAN', icon: Wifi },
     { id: 'tickets', label: 'Tickets', icon: Ticket },
     { id: 'prints', label: 'Drucke', icon: Printer },
@@ -50,7 +50,7 @@ export function AnalyticsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Statistik & Analyse" subtitle="Detaillierte Einblicke ueber alle Plattformbereiche" />
+      <PageHeader title="Statistik & Analyse" subtitle="Detaillierte Einblicke über alle Plattformbereiche" />
       <div className="flex gap-1 border-b border-slate-800 overflow-x-auto scrollbar-thin">
         {tabs.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} className={cn('tab whitespace-nowrap', tab === t.id ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200')}>
@@ -130,8 +130,8 @@ function LendingAnalytics({ loans }: { loans: LendingLoan[] }) {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatBox label="Ausleihen gesamt" value={formatNumber(loans.length)} icon={HandHelping} color="blue" />
         <StatBox label="Aktiv" value={loans.filter((l) => l.status === 'active').length} icon={TrendingUp} color="emerald" />
-        <StatBox label="Zurueckgegeben" value={loans.filter((l) => l.status === 'returned').length} icon={Package} color="cyan" />
-        <StatBox label="Ueberfaellig" value={loans.filter((l) => l.status === 'overdue').length} icon={Ticket} color="red" />
+        <StatBox label="Zurückgegeben" value={loans.filter((l) => l.status === 'returned').length} icon={Package} color="cyan" />
+        <StatBox label="Überfällig" value={loans.filter((l) => l.status === 'overdue').length} icon={Ticket} color="red" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Chart data={byMonth} label="Ausleihen pro Monat" color="blue" />
@@ -157,14 +157,14 @@ function DeviceAnalytics({ devices, loans }: { devices: Device[]; loans: Lending
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatBox label="Geraete gesamt" value={devices.length} icon={Package} color="blue" />
-        <StatBox label="Verfuegbar" value={devices.filter((d) => d.status === 'available').length} icon={TrendingUp} color="emerald" />
+        <StatBox label="Geräte gesamt" value={devices.length} icon={Package} color="blue" />
+        <StatBox label="Verfügbar" value={devices.filter((d) => d.status === 'available').length} icon={TrendingUp} color="emerald" />
         <StatBox label="Ausgeliehen" value={devices.filter((d) => d.status === 'borrowed').length} icon={HandHelping} color="cyan" />
         <StatBox label="Defekt" value={devices.filter((d) => d.status === 'defective').length} icon={Ticket} color="red" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <Chart data={byCategory} label="Geraete nach Kategorie" color="violet" />
-        <Chart data={popularity} label="Meist ausgeliehene Geraete" color="amber" />
+        <Chart data={byCategory} label="Geräte nach Kategorie" color="violet" />
+        <Chart data={popularity} label="Meist ausgeliehene Geräte" color="amber" />
       </div>
     </div>
   );
@@ -243,7 +243,7 @@ function TicketAnalytics({ tickets }: { tickets: TicketType[] }) {
         <StatBox label="Tickets gesamt" value={tickets.length} icon={Ticket} color="blue" />
         <StatBox label="Offen" value={tickets.filter((t) => t.status === 'open').length} icon={TrendingUp} color="amber" />
         <StatBox label="Geloest" value={tickets.filter((t) => t.status === 'resolved').length} icon={Package} color="emerald" />
-        <StatBox label="Eskaliert" value={tickets.filter((t) => t.escalated).length} icon={Ticket} color="red" />
+        <StatBox label="Dringend" value={tickets.filter((t) => t.escalated).length} icon={Ticket} color="red" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Chart data={byCategory} label="Tickets nach Kategorie" color="violet" />

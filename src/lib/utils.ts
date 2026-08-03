@@ -1,4 +1,4 @@
-import { supabase } from './db';
+import { supabase } from './database';
 import type { ActivityLog } from './types';
 
 export function cn(...classes: (string | false | null | undefined)[]): string {

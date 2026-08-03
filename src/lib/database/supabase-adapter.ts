@@ -15,9 +15,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
     schluesselVorhanden: !!supabaseAnonKey,
   });
   console.error('%c[DB] FEHLER: Supabase-Umgebungsvariablen fehlen.', 'color:#ef4444;font-weight:bold');
-  console.error('%c[DB] Hinweis: .env-Datei pruefen. VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY muessen gesetzt sein.', 'color:#f59e0b');
+  console.error('%c[DB] Hinweis: .env-Datei prüfen. VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY müssen gesetzt sein.', 'color:#f59e0b');
   console.error('%c[DB] Hinweis: One-Click-Installer ausfuehren, um PostgreSQL automatisch einzurichten.', 'color:#f59e0b');
-  throw new Error('Supabase-Umgebungsvariablen fehlen. .env-Datei oder Installer pruefen.');
+  throw new Error('Supabase-Umgebungsvariablen fehlen. .env-Datei oder Installer prüfen.');
 }
 
 logInit('Supabase-Client wird erstellt...');
@@ -48,8 +48,8 @@ export async function checkConnection(): Promise<boolean> {
         code: error.code,
       });
       console.error('%c[DB] FEHLER: Datenbank nicht erreichbar.', 'color:#ef4444;font-weight:bold');
-      console.error('%c[DB] Hinweis: PostgreSQL-Dienst pruefen (net start postgresql-x64-17 / systemctl start postgresql)', 'color:#f59e0b');
-      console.error('%c[DB] Hinweis: .env-Datei pruefen (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)', 'color:#f59e0b');
+      console.error('%c[DB] Hinweis: PostgreSQL-Dienst prüfen (net start postgresql-x64-17 / systemctl start postgresql)', 'color:#f59e0b');
+      console.error('%c[DB] Hinweis: .env-Datei prüfen (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)', 'color:#f59e0b');
       console.error('%c[DB] Hinweis: One-Click-Installer ausfuehren, um PostgreSQL automatisch einzurichten.', 'color:#f59e0b');
       return false;
     }
@@ -64,14 +64,14 @@ export async function checkConnection(): Promise<boolean> {
     if (e instanceof Error && e.stack) {
       console.error('%c[DB] Stacktrace:', 'color:#ef4444', e.stack);
     }
-    console.error('%c[DB] Hinweis: PostgreSQL-Dienst und .env-Konfiguration pruefen.', 'color:#f59e0b');
+    console.error('%c[DB] Hinweis: PostgreSQL-Dienst und .env-Konfiguration prüfen.', 'color:#f59e0b');
     return false;
   }
 }
 
-// Verbindung asynchron pruefen (nicht-blockierend)
+// Verbindung asynchron prüfen (nicht-blockierend)
 checkConnection().catch((e) => {
-  dbLog('error', 'init', 'Unerwarteter Fehler bei Verbindungspruefung', { fehler: describeError(e) });
+  dbLog('error', 'init', 'Unerwarteter Fehler bei Verbindungsprüfung', { fehler: describeError(e) });
 });
 
 logInit('Supabase-Client erstellt');

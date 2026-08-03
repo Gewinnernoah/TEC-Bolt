@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { db } from './database';
+import { supabase } from './database';
 import type { SystemSetting } from './types';
 
 const cache = new Map<string, unknown>();

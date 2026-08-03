@@ -1,14 +1,14 @@
-// Einheitlicher Datenbank-Client — zentraler Einstiegspunkt fuer die gesamte App.
+// Einheitlicher Datenbank-Client — zentraler Einstiegspunkt für die gesamte App.
 //
 // Dieses Modul waehlt das richtige Backend anhand von VITE_DB_MODE:
 //   - 'supabase'  → PostgreSQL (Standard, cloud oder lokal)
 //   - 'sqlite'    → SQLite (Offline-Modus, sql.js WASM, IndexedDB)
 //
-// Um das Backend zu wechseln, VITE_DB_MODE in .env aendern — keine Code-Aenderungen noetig.
+// Um das Backend zu wechseln, VITE_DB_MODE in .env ändern — keine Code-Änderungen noetig.
 //
 // Exporte:
 //   supabase  — der Client (Sync-Proxy, delegiert nach dbReady)
-//   db        — Alias fuer supabase
+//   db        — Alias für supabase
 //   dbReady   — Promise, das aufloest sobald der Client bereit ist
 //   getDb()   — Sync-Getter (wirft, wenn nicht bereit; in dbReady-gated Komponenten verwenden)
 //   DB_MODE   — aktueller Modus ('sqlite' | 'supabase')

@@ -1,12 +1,15 @@
 // Pfad-basiertes Routing fuer die Anwendung (History API).
-// Die Startseite (/) zeigt eine Landing-Page, das Dashboard ist unter /dashboard erreichbar.
-//
-// Beispiele:
-//   http://localhost:5173/           → Landing-Page (Hauptseite)
-//   http://localhost:5173/dashboard  → Dashboard (mit Anmeldung)
-//   http://localhost:5173/login      → Anmeldeseite
+// Standardmaessig wird auf /login geleitet.
+// Oeffentliche Routen ohne Anmeldung: /login, /TEC-Anzeige, /faq-public, /impressum, /dokumentation
 
-export type Route = 'landing' | 'dashboard' | 'login';
+export type Route =
+  | 'landing'
+  | 'dashboard'
+  | 'login'
+  | 'tec-display'
+  | 'faq-public'
+  | 'impressum'
+  | 'dokumentation';
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
 
@@ -17,15 +20,35 @@ function stripBase(pathname: string): string {
   return pathname;
 }
 
+function normalizePath(pathname: string): string {
+  return stripBase(pathname).replace(/^\/+/, '');
+}
+
 export function getRoute(): Route {
-  const path = stripBase(window.location.pathname).replace(/^\/+/, '').toLowerCase();
+  const path = normalizePath(window.location.pathname).toLowerCase();
   if (path === 'dashboard') return 'dashboard';
   if (path === 'login') return 'login';
-  return 'landing';
+  if (path === 'tec-anzeige') return 'tec-display';
+  if (path === 'faq-public') return 'faq-public';
+  if (path === 'impressum') return 'impressum';
+  if (path === 'dokumentation') return 'dokumentation';
+  // Root (/) leitet auf Login um
+  if (path === '') return 'login';
+  // Unbekannte Route -> Login
+  return 'login';
 }
 
 export function navigateTo(route: Route): void {
-  const target = route === 'landing' ? `${BASE}/` : `${BASE}/${route}`;
+  const routePath: Record<Route, string> = {
+    landing: '/',
+    dashboard: '/dashboard',
+    login: '/login',
+    'tec-display': '/TEC-Anzeige',
+    'faq-public': '/faq-public',
+    impressum: '/impressum',
+    dokumentation: '/dokumentation',
+  };
+  const target = `${BASE}${routePath[route]}`;
   if (window.location.pathname !== target) {
     window.history.pushState({}, '', target);
     window.dispatchEvent(new PopStateEvent('popstate'));

@@ -6,7 +6,6 @@ import { ToastProvider } from '@/components/Toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppShell } from '@/components/AppShell';
 import { LoginPage } from '@/pages/LoginPage';
-import { LandingPage } from '@/pages/LandingPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { LendingPage } from '@/pages/LendingPage';
@@ -21,10 +20,13 @@ import { AdminUsersPage } from '@/pages/AdminUsersPage';
 import { AdminSettingsPage } from '@/pages/AdminSettingsPage';
 import { AdminLogsPage } from '@/pages/AdminLogsPage';
 import { TecRoomPage } from '@/pages/TecRoomPage';
+import { ImpressumPage } from '@/pages/ImpressumPage';
+import { PublicFaqPage } from '@/pages/PublicFaqPage';
+import { DocumentationPage } from '@/pages/DocumentationPage';
 import { getRoute, onRouteChange, navigateTo, type Route } from '@/lib/router';
 
 function AppContent() {
-  const { session, profile, loading, locked } = useAuth();
+  const { session, profile, loading, locked, mustChangePassword } = useAuth();
   const [page, setPage] = useState('dashboard');
   const [route, setRoute] = useState<Route>(getRoute());
 
@@ -48,20 +50,32 @@ function AppContent() {
     );
   }
 
-  // Landing-Page: nur anzeigen wenn nicht eingeloggt und Route = landing
-  if (route === 'landing' && !session) {
-    return <LandingPage />;
+  // Öffentliche Routen — kein Login erforderlich
+  if (route === 'tec-display') {
+    return <TecRoomPage onExit={() => navigateTo('login')} />;
   }
 
-  if (locked && session) {
-    return <LoginPage locked />;
+  if (route === 'faq-public') {
+    return <PublicFaqPage onBack={() => navigateTo('login')} />;
   }
 
-  if (!session || !profile) {
-    return <LoginPage />;
+  if (route === 'impressum') {
+    return <ImpressumPage onBack={() => navigateTo('login')} />;
   }
 
-  // Eingeloggt: Dashboard und Unterseiten
+  if (route === 'dokumentation') {
+    return <DocumentationPage onBack={() => navigateTo('login')} />;
+  }
+
+  // Login-Seite
+  if (route === 'login' || !session || !profile) {
+    if (locked && session) {
+      return <LoginPage locked />;
+    }
+    return <LoginPage mustChangePassword={mustChangePassword} />;
+  }
+
+  // Eingeloggt: TEC-Raum im internen Modus
   if (page === 'tec-room') {
     return <TecRoomPage onExit={() => setPage('dashboard')} />;
   }
@@ -85,25 +99,25 @@ function AppContent() {
     }
   };
 
-  // Admin-Seiten schuetzen
+  // Admin-Seiten schützen
   if ((page === 'admin-users' || page === 'admin-settings' || page === 'admin-logs') && profile.role !== 'admin') {
     return (
       <AppShell current="dashboard" onNavigate={setPage}>
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <h2 className="text-lg font-semibold text-slate-200">Zugriff verweigert</h2>
-          <p className="mt-1 text-sm text-slate-400">Sie benoetigen Administratorrechte, um auf diese Seite zuzugreifen.</p>
+          <p className="mt-1 text-sm text-slate-400">Sie benötigen Administratorrechte, um auf diese Seite zuzugreifen.</p>
         </div>
       </AppShell>
     );
   }
 
-  // Personal-Seiten schuetzen
-  if ((page === 'inventory' || page === 'analytics') && profile.role === 'teacher') {
+  // Personal-Seiten schützen
+  if ((page === 'inventory' || page === 'analytics') && (profile.role === 'teacher' || profile.role === 'student')) {
     return (
       <AppShell current="dashboard" onNavigate={setPage}>
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <h2 className="text-lg font-semibold text-slate-200">Zugriff verweigert</h2>
-          <p className="mt-1 text-sm text-slate-400">Sie benoetigen Personalrechte, um auf diese Seite zuzugreifen.</p>
+          <p className="mt-1 text-sm text-slate-400">Sie benötigen Personalrechte, um auf diese Seite zuzugreifen.</p>
         </div>
       </AppShell>
     );
@@ -147,7 +161,7 @@ export default function App() {
         <div className="max-w-lg rounded-xl border border-red-900/50 bg-red-950/20 p-8 text-center">
           <h2 className="text-xl font-bold text-red-400">Datenbankfehler</h2>
           <p className="mt-2 text-sm text-slate-400">
-            Die Datenbank konnte nicht initialisiert werden. Bitte pruefen Sie die Konfiguration und laden Sie die Seite neu.
+            Die Datenbank konnte nicht initialisiert werden. Bitte überprüfen Sie die Konfiguration und laden Sie die Seite neu.
           </p>
           <pre className="mt-4 max-h-40 overflow-auto rounded-lg bg-black/40 p-3 text-left text-xs text-red-300">
             {dbError}

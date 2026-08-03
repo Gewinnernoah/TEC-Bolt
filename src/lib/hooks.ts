@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from './db';
+import { supabase } from './database';
 import type {
   Device, LendingLoan, LendingRequest, PrintRequest, Ticket, WifiMeasurement,
   Consumable, Profile, Room, AppNotification,

@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
   HandHelping, Plus, Check, X, Clock, Calendar, Package, Sparkles,
-  PenTool, ArrowLeft, Search, AlertCircle, MapPin,
+  PenTool, ArrowLeft, Search, AlertCircle, MapPin, QrCode, ClipboardCheck,
+  Battery, Box,
 } from 'lucide-react';
-import { supabase } from '@/lib/db';
+import { supabase } from '@/lib/database';
 import { useAuth } from '@/lib/auth';
 import { useDevices, useLoans, useRequests, useRooms } from '@/lib/hooks';
 import { LOAN_STATUS_META, REQUEST_STATUS_META } from '@/lib/constants';
@@ -26,7 +27,7 @@ export function LendingPage() {
   const [showFulfill, setShowFulfill] = useState<LendingRequest | null>(null);
   const [showReturn, setShowReturn] = useState<LendingLoan | null>(null);
 
-  if (reqLoading || loanLoading) return <LoadingScreen message="Ausleihdaten werden geladen..." />;
+  if (reqLoading || loanLoading) return <LoadingScreen message="Ausleihdaten werden geladen ..." />;
 
   const myRequests = (requests ?? []).filter((r) => r.teacher_id === profile?.id);
   const pendingRequests = (requests ?? []).filter((r) => r.status === 'pending');
@@ -42,7 +43,7 @@ export function LendingPage() {
     <div className="space-y-5">
       <PageHeader
         title="Ausleihsystem"
-        subtitle="Geraete ausleihen, zurueckgeben und verwalten"
+        subtitle="Geräte ausleihen, zurückgeben und verwalten"
         actions={
           <button onClick={() => setShowCreate(true)} className="btn-primary">
             <Plus className="h-4 w-4" /> Neue Anfrage
@@ -127,7 +128,7 @@ function RequestList({ requests, onFulfill, onApprove, onReject, readOnly }: {
               </div>
             )}
             {!readOnly && r.status === 'approved' && (
-              <button onClick={() => onFulfill(r)} className="btn-primary text-xs"><Package className="h-4 w-4" /> Erfuellen</button>
+              <button onClick={() => onFulfill(r)} className="btn-primary text-xs"><Package className="h-4 w-4" /> Erfüllen</button>
             )}
           </div>
         </div>
@@ -137,7 +138,7 @@ function RequestList({ requests, onFulfill, onApprove, onReject, readOnly }: {
         <Modal open onClose={() => setRejecting(null)} title="Anfrage ablehnen" size="sm"
           footer={<><button className="btn-secondary" onClick={() => setRejecting(null)}>Abbrechen</button>
           <button className="btn-danger" onClick={() => { if (!rejectReason.trim()) { toast('Bitte geben Sie einen Grund an', 'error'); return; } onReject(rejecting, rejectReason); setRejecting(null); }}>Ablehnen</button></>}>
-          <div><label className="label">Ablehnungsgrund</label><textarea className="input min-h-[80px]" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Erlaeutern Sie, warum die Anfrage abgelehnt wird..." /></div>
+          <div><label className="label">Ablehnungsgrund</label><textarea className="input min-h-[80px]" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Erläutern Sie, warum die Anfrage abgelehnt wird ..." /></div>
         </Modal>
       )}
     </div>
@@ -157,24 +158,24 @@ function ActiveLoansList({ loans, onReturn }: { loans: LendingLoan[]; onReturn: 
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-slate-200">{loan.teacher?.full_name ?? 'Unbekannt'}</span>
                   <span className={cn('badge', LOAN_STATUS_META[loan.status].bg, LOAN_STATUS_META[loan.status].color)}>{LOAN_STATUS_META[loan.status].label}</span>
-                  {overdue && <span className="badge bg-red-500/15 border-red-500/30 text-red-300"><AlertCircle className="h-3 w-3" /> Ueberfaellig</span>}
+                  {overdue && <span className="badge bg-red-500/15 border-red-500/30 text-red-300"><AlertCircle className="h-3 w-3" /> Überfällig</span>}
                   {loan.room && <span className="badge bg-slate-700/50 text-slate-300 border-slate-700"><MapPin className="h-3 w-3" />{loan.room.name}</span>}
                 </div>
                 <div className="mt-1 text-xs text-slate-500">
-                  Ausgabe: {formatDateTime(loan.checkout_at)} · Rueckgabe: {formatDateTime(loan.expected_return_at)}
+                  Ausgabe: {formatDateTime(loan.checkout_at)} · Rückgabe: {formatDateTime(loan.expected_return_at)}
                 </div>
                 <div className="mt-2 text-xs text-slate-400">Personal: {loan.staff?.full_name ?? '—'}</div>
                 {loan.items && loan.items.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {loan.items.map((item) => (
                       <span key={item.id} className="badge bg-slate-800 text-slate-300 border-slate-700 text-[10px]">
-                        {item.device?.name ?? 'Geraet'} ({item.device?.inventory_number ?? '—'})
+                        {item.device?.name} ({item.device?.inventory_number ?? '—'})
                       </span>
                     ))}
                   </div>
                 )}
               </div>
-              <button onClick={() => onReturn(loan)} className="btn-secondary"><ArrowLeft className="h-4 w-4" /> Zurueckgeben</button>
+              <button onClick={() => onReturn(loan)} className="btn-secondary"><ArrowLeft className="h-4 w-4" /> Zurückgeben</button>
             </div>
           </div>
         );
@@ -192,10 +193,10 @@ function HistoryList({ loans, requests }: { loans: LendingLoan[]; requests: Lend
           <div className="flex items-center justify-between">
             <div>
               <span className="text-sm text-slate-200">{loan.teacher?.full_name ?? 'Unbekannt'}</span>
-              <span className="ml-2 text-xs text-slate-500">{loan.items?.length ?? 0} Geraet(e)</span>
+              <span className="ml-2 text-xs text-slate-500">{loan.items?.length ?? 0} Gerät(e)</span>
             </div>
             <div className="text-right text-xs text-slate-500">
-              <div>Zurueckgegeben {formatDateTime(loan.actual_return_at)}</div>
+              <div>Zurückgegeben {formatDateTime(loan.actual_return_at)}</div>
               <span className={cn('badge mt-0.5', LOAN_STATUS_META[loan.status].bg, LOAN_STATUS_META[loan.status].color)}>{LOAN_STATUS_META[loan.status].label}</span>
             </div>
           </div>
@@ -218,6 +219,7 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
   const [notes, setNotes] = useState('');
   const [search, setSearch] = useState('');
   const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [packingChecked, setPackingChecked] = useState<Record<string, boolean>>({});
   const toast = useToast();
 
   useEffect(() => {
@@ -255,9 +257,15 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
   const toggleDevice = (id: string) => setSelectedDevices((prev) => prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]);
   const toggleBundle = (id: string) => setSelectedBundles((prev) => prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]);
 
+  const packingSteps = [
+    { id: 'charged', label: 'Geräte sind vollständig geladen', icon: Battery },
+    { id: 'packed', label: 'Geräte sind ordnungsgemäß verpackt', icon: Box },
+    { id: 'accessories', label: 'Zubehör (Ladekabel, Adapter) liegt bei', icon: Package },
+  ];
+
   const submit = async () => {
-    if (!roomId || !periodId) { toast('Waehlen Sie einen Raum und Ausleihzeitraum', 'error'); return; }
-    if (selectedDevices.length === 0 && selectedBundles.length === 0) { toast('Waehlen Sie mindestens ein Geraet oder Buendel', 'error'); return; }
+    if (!roomId || !periodId) { toast('Wählen Sie einen Raum und Ausleihzeitraum', 'error'); return; }
+    if (selectedDevices.length === 0 && selectedBundles.length === 0) { toast('Wählen Sie mindestens ein Gerät oder Bündel', 'error'); return; }
 
     const { data: reqData, error: reqError } = await supabase.from('lending_requests').insert({
       teacher_id: profile?.id, room_id: roomId, period_id: periodId, status: 'pending', notes,
@@ -285,7 +293,7 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
           <div>
             <label className="label">Raum (erforderlich)</label>
             <select className="select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-              <option value="">Raum auswaehlen...</option>
+              <option value="">Raum auswählen ...</option>
               {(rooms ?? []).map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number})</option>)}
             </select>
             {roomId && (rooms ?? []).find((r) => r.id === roomId)?.available_connections && (
@@ -297,9 +305,32 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
           <div>
             <label className="label">Ausleihzeitraum</label>
             <select className="select" value={periodId} onChange={(e) => setPeriodId(e.target.value)}>
-              <option value="">Zeitraum auswaehlen...</option>
+              <option value="">Zeitraum auswählen ...</option>
               {periods.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.duration_minutes}min)</option>)}
             </select>
+          </div>
+        </div>
+
+        {/* Packing reminder / checklist for staff */}
+        <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-amber-300 mb-2">
+            <ClipboardCheck className="h-4 w-4" /> Verpackungs-Erinnerung für Personal
+          </div>
+          <p className="text-xs text-amber-400/80 mb-3">Vor der Ausgabe müssen folgende Punkte sichergestellt sein:</p>
+          <div className="space-y-2">
+            {packingSteps.map((step) => {
+              const checked = packingChecked[step.id] ?? false;
+              return (
+                <button key={step.id} type="button" onClick={() => setPackingChecked((p) => ({ ...p, [step.id]: !p[step.id] }))}
+                  className={cn('flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-xs transition-colors', checked ? 'border-amber-500/50 bg-amber-600/10 text-amber-200' : 'border-slate-700 text-slate-300 hover:border-amber-500/30')}>
+                  <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded border', checked ? 'border-amber-500 bg-amber-500 text-slate-900' : 'border-slate-600')}>
+                    {checked && <Check className="h-3.5 w-3.5" />}
+                  </span>
+                  <step.icon className="h-4 w-4 shrink-0 opacity-70" />
+                  <span>{step.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -308,7 +339,7 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
             <div className="flex items-center gap-2 text-sm font-medium text-cyan-300 mb-2">
               <Sparkles className="h-4 w-4" /> Smarte Empfehlungen
             </div>
-            <p className="text-xs text-cyan-400/80 mb-2">Basierend auf den Anschluessen des ausgewaehlten Raums werden diese Zubehoerteile empfohlen:</p>
+            <p className="text-xs text-cyan-400/80 mb-2">Basierend auf den Anschlüssen des ausgewählten Raums werden diese Zubehörteile empfohlen:</p>
             <div className="flex flex-wrap gap-2">
               {recommendations.map((id) => {
                 const d = (devices ?? []).find((dev) => dev.id === id);
@@ -326,7 +357,7 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
 
         {bundles.length > 0 && (
           <div>
-            <h4 className="mb-2 text-sm font-semibold text-slate-200">Geraetebuendel</h4>
+            <h4 className="mb-2 text-sm font-semibold text-slate-200">Gerätebündel</h4>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {bundles.map((b) => (
                 <button key={b.id} onClick={() => toggleBundle(b.id)} className={cn('card p-3 text-left transition-colors', selectedBundles.includes(b.id) ? 'border-blue-500 bg-blue-600/10' : 'hover:border-slate-700')}>
@@ -343,10 +374,10 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-semibold text-slate-200">Einzelne Geraete</h4>
+            <h4 className="text-sm font-semibold text-slate-200">Einzelne Geräte</h4>
             <div className="relative w-48">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-              <input className="input pl-8 py-1.5 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Suchen..." />
+              <input className="input pl-8 py-1.5 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Suchen ..." />
             </div>
           </div>
           <div className="scrollbar-thin max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-slate-800 p-2">
@@ -359,11 +390,11 @@ function CreateRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved
                 {selectedDevices.includes(d.id) && <Check className="h-4 w-4 text-blue-400" />}
               </button>
             ))}
-            {availableDevices.length === 0 && <div className="py-4 text-center text-sm text-slate-500">Keine verfuegbaren Geraete gefunden</div>}
+            {availableDevices.length === 0 && <div className="py-4 text-center text-sm text-slate-500">Keine verfügbaren Geräte gefunden</div>}
           </div>
         </div>
 
-        <div><label className="label">Notizen (optional)</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Besondere Hinweise hinzufuegen..." /></div>
+        <div><label className="label">Notizen (optional)</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Besondere Hinweise hinzufügen ..." /></div>
       </div>
     </Modal>
   );
@@ -389,8 +420,25 @@ function FulfillModal({ request, devices, onClose, onSaved }: { request: Lending
 
   const toggleDevice = (id: string) => setSelectedDeviceIds((prev) => prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]);
 
+  // Alternative device suggestions: for each requested device that is NOT
+  // available, find an available device in the same category to offer instead.
+  const requestedDeviceIds = (request.items ?? []).filter((i) => i.device_id).map((i) => i.device_id);
+  const requestedDevices = devices.filter((d) => requestedDeviceIds.includes(d.id));
+  const alternatives = useMemo(() => {
+    const out: Record<string, Device | undefined> = {};
+    for (const d of requestedDevices) {
+      if (d.status !== 'available') {
+        // Prefer a device that is available AND shares the same category
+        out[d.id] = devices.find(
+          (alt) => alt.id !== d.id && alt.status === 'available' && alt.category_id && alt.category_id === d.category_id
+        );
+      }
+    }
+    return out;
+  }, [requestedDevices, devices]);
+
   const fulfill = async () => {
-    if (selectedDeviceIds.length === 0) { toast('Waehlen Sie mindestens ein Geraet zum Ausleihen', 'error'); return; }
+    if (selectedDeviceIds.length === 0) { toast('Wählen Sie mindestens ein Gerät zum Ausleihen', 'error'); return; }
     if (!signature) { toast('Unterschrift ist erforderlich', 'error'); return; }
     if (!signatureName.trim()) { toast('Unterschriftsname ist erforderlich', 'error'); return; }
 
@@ -416,21 +464,51 @@ function FulfillModal({ request, devices, onClose, onSaved }: { request: Lending
     onSaved();
   };
 
-  // Show requested items as suggestions
-  const requestedDevices = (request.items ?? []).filter((i) => i.device_id).map((i) => i.device_id);
-  const availableDevices = devices.filter((d) => d.status === 'available' || requestedDevices.includes(d.id));
+  // Show requested items as suggestions plus all available devices
+  const availableDevices = devices.filter((d) => d.status === 'available' || requestedDeviceIds.includes(d.id));
 
   return (
-    <Modal open onClose={onClose} title="Ausleihanfrage erfuellen" size="lg"
-      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={fulfill}><Check className="h-4 w-4" /> Ausleihe abschliessen</button></>}>
+    <Modal open onClose={onClose} title="Ausleihanfrage erfüllen" size="lg"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={fulfill}><Check className="h-4 w-4" /> Ausleihe abschließen</button></>}>
       <div className="space-y-4">
         <div className="card p-3">
           <div className="text-sm font-medium text-slate-200">{request.teacher?.full_name}</div>
           <div className="text-xs text-slate-500">Raum: {request.room?.name ?? '—'} · Zeitraum: {period?.name ?? '—'}</div>
         </div>
 
+        {/* Alternative device suggestions for unavailable requested devices */}
+        {requestedDevices.some((d) => d.status !== 'available') && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-amber-300 mb-2">
+              <AlertCircle className="h-4 w-4" /> Geräte nicht verfügbar — Alternativen
+            </div>
+            <div className="space-y-2">
+              {requestedDevices.filter((d) => d.status !== 'available').map((d) => {
+                const alt = alternatives[d.id];
+                return (
+                  <div key={d.id} className="rounded-lg border border-amber-500/20 bg-amber-900/10 px-3 py-2 text-xs">
+                    <div className="text-amber-200">
+                      <span className="font-medium">{d.name}</span> ({d.inventory_number}) ist aktuell <span className="font-medium">{d.status === 'borrowed' ? 'ausgeliehen' : d.status === 'maintenance' ? 'in Wartung' : d.status === 'defective' ? 'defekt' : 'nicht verfügbar'}</span>.
+                    </div>
+                    {alt ? (
+                      <div className="mt-1.5 flex items-center justify-between gap-2">
+                        <span className="text-slate-300">Alternative aus gleicher Kategorie: <span className="font-medium text-emerald-300">{alt.name}</span> ({alt.inventory_number})</span>
+                        <button onClick={() => { if (!selectedDeviceIds.includes(alt.id)) toggleDevice(alt.id); }} className={cn('btn-xs', selectedDeviceIds.includes(alt.id) ? 'btn-primary' : 'btn-secondary')}>
+                          {selectedDeviceIds.includes(alt.id) ? <><Check className="h-3 w-3" /> Gewählt</> : 'Als Alternative wählen'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-1 text-slate-400">Keine alternative Gerät in der Kategorie &bdquo;{d.category?.name ?? '—'}&ldquo; verfügbar.</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div>
-          <h4 className="mb-2 text-sm font-semibold text-slate-200">Geraete zum Ausleihen auswaehlen</h4>
+          <h4 className="mb-2 text-sm font-semibold text-slate-200">Geräte zum Ausleihen auswählen</h4>
           <div className="scrollbar-thin max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-slate-800 p-2">
             {availableDevices.map((d) => (
               <button key={d.id} onClick={() => toggleDevice(d.id)} className={cn('flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors', selectedDeviceIds.includes(d.id) ? 'border-blue-500 bg-blue-600/10' : 'border-slate-800 hover:bg-slate-800/30')}>
@@ -439,7 +517,7 @@ function FulfillModal({ request, devices, onClose, onSaved }: { request: Lending
                   <div className="text-xs text-slate-500">{d.inventory_number} · {d.barcode ?? 'Kein Barcode'}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {requestedDevices.includes(d.id) && <span className="badge bg-cyan-500/15 border-cyan-500/30 text-cyan-300 text-[10px]">Angefragt</span>}
+                  {requestedDeviceIds.includes(d.id) && <span className="badge bg-cyan-500/15 border-cyan-500/30 text-cyan-300 text-[10px]">Angefragt</span>}
                   {selectedDeviceIds.includes(d.id) && <Check className="h-4 w-4 text-blue-400" />}
                 </div>
               </button>
@@ -449,14 +527,14 @@ function FulfillModal({ request, devices, onClose, onSaved }: { request: Lending
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="label">Erwartete Rueckgabe</label>
+            <label className="label">Erwartete Rückgabe</label>
             <div className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300">{formatDateTime(expectedReturn)}</div>
           </div>
           <div><label className="label">Unterschriftsname</label><input className="input" value={signatureName} onChange={(e) => setSignatureName(e.target.value)} /></div>
         </div>
 
         <div>
-          <label className="label flex items-center gap-1"><PenTool className="h-3.5 w-3.5" /> Unterschriftsbestaetigung (erforderlich)</label>
+          <label className="label flex items-center gap-1"><PenTool className="h-3.5 w-3.5" /> Unterschriftsbestätigung (erforderlich)</label>
           <SignaturePad onChange={setSignature} />
         </div>
       </div>
@@ -468,12 +546,48 @@ function ReturnModal({ loan, onClose, onSaved }: { loan: LendingLoan; onClose: (
   const { profile } = useAuth();
   const [condition, setCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged' | 'defective'>('good');
   const [notes, setNotes] = useState('');
+  const [signature, setSignature] = useState<string | null>(null);
+  const [signatureName, setSignatureName] = useState(loan.teacher?.full_name ?? '');
+  // QR / inventory scan state: map of loan item id -> scanned code
+  const [scannedCodes, setScannedCodes] = useState<Record<string, string>>({});
   const toast = useToast();
 
+  // Normalise a scanned/typed code so QR, barcode and inventory number all match.
+  const normalize = (s: string) => s.trim().toUpperCase();
+
+  // Build a list of the devices that must be verified at return.
+  const returnItems = (loan.items ?? []).map((item) => ({
+    item,
+    device: item.device,
+    expected: item.device ? normalize(item.device.inventory_number ?? item.device.qr_code ?? item.device.barcode ?? '') : '',
+    scanned: scannedCodes[item.id] ?? '',
+  }));
+
+  // A device is verified when its scanned code matches the expected inventory
+  // number, QR code or barcode.
+  const verified = returnItems.map((r) => {
+    if (!r.device) return false;
+    const scanned = normalize(r.scanned);
+    if (!scanned) return false;
+    const inv = normalize(r.device.inventory_number ?? '');
+    const qr = normalize(r.device.qr_code ?? '');
+    const bc = normalize(r.device.barcode ?? '');
+    return scanned === inv || scanned === qr || scanned === bc;
+  });
+  const allVerified = returnItems.length > 0 && verified.every(Boolean);
+
   const handleReturn = async () => {
+    if (returnItems.length > 0 && !allVerified) {
+      toast('Bitte scannen/überprüfen Sie jedes Gerät (QR oder Inventarnummer)', 'error');
+      return;
+    }
+    if (!signature) { toast('Unterschrift ist für die Rückgabe erforderlich', 'error'); return; }
+    if (!signatureName.trim()) { toast('Unterschriftsname ist erforderlich', 'error'); return; }
+
     const { error } = await supabase.from('lending_loans').update({
       actual_return_at: new Date().toISOString(), status: 'returned',
       return_condition: condition, return_notes: notes, return_staff_id: profile?.id,
+      return_signature_data: signature, return_signature_name: signatureName.trim(),
     }).eq('id', loan.id);
     if (error) { toast(error.message, 'error'); return; }
 
@@ -484,13 +598,22 @@ function ReturnModal({ loan, onClose, onSaved }: { loan: LendingLoan; onClose: (
     }
 
     await logActivity('loan.return', 'loan', loan.id, { condition });
-    toast('Geraet(e) erfolgreich zurueckgegeben', 'success');
+    toast('Gerät(e) erfolgreich zurückgegeben', 'success');
     onSaved();
   };
 
+  const conditionOptions = [
+    ['excellent', 'Ausgezeichnet', 'text-emerald-300'],
+    ['good', 'Gut', 'text-blue-300'],
+    ['fair', 'Akzeptabel', 'text-amber-300'],
+    ['damaged', 'Beschädigt', 'text-orange-300'],
+    ['defective', 'Defekt', 'text-red-300'],
+  ] as const;
+
   return (
-    <Modal open onClose={onClose} title="Geraete zurueckgeben" size="md"
-      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={handleReturn}><ArrowLeft className="h-4 w-4" /> Rueckgabe bestaetigen</button></>}>
+    <Modal open onClose={onClose} title="Geräte zurückgeben" size="lg"
+      footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button>
+      <button className="btn-primary" onClick={handleReturn} disabled={!allVerified || !signature}><ArrowLeft className="h-4 w-4" /> Rückgabe bestätigen</button></>}>
       <div className="space-y-4">
         <div className="card p-3">
           <div className="text-sm font-medium text-slate-200">{loan.teacher?.full_name}</div>
@@ -499,20 +622,70 @@ function ReturnModal({ loan, onClose, onSaved }: { loan: LendingLoan; onClose: (
             {(loan.items ?? []).map((item) => <span key={item.id} className="badge bg-slate-800 text-slate-300 border-slate-700 text-[10px]">{item.device?.name}</span>)}
           </div>
         </div>
+
+        {/* QR / inventory scan verification at return */}
         <div>
-          <label className="label">Geraetzustand nach Rueckgabe</label>
+          <label className="label flex items-center gap-1"><QrCode className="h-3.5 w-3.5" /> Geräte-Scan zur Verifikation</label>
+          <p className="mb-2 text-xs text-slate-400">Scannen oder tippen Sie die Inventarnummer / den QR-Code jedes Geräts, um die Rückgabe zu verifizieren.</p>
+          <div className="space-y-2">
+            {returnItems.map((r, idx) => {
+              const isVerified = verified[idx];
+              return (
+                <div key={r.item.id} className={cn('flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors', isVerified ? 'border-emerald-500/50 bg-emerald-600/5' : 'border-slate-700')}>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-slate-200 truncate">{r.device?.name ?? 'Unbekannt'}</div>
+                    <div className="text-xs text-slate-500">Inventar-Nr.: {r.device?.inventory_number ?? '—'}</div>
+                  </div>
+                  <div className="relative w-56 shrink-0">
+                    <QrCode className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                    <input
+                      className={cn('input pl-8 py-1.5 text-xs', isVerified && 'border-emerald-500/50 text-emerald-300')}
+                      value={r.scanned}
+                      onChange={(e) => setScannedCodes((p) => ({ ...p, [r.item.id]: e.target.value }))}
+                      placeholder="Scannen / Inventarnummer ..."
+                    />
+                  </div>
+                  <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-full', isVerified ? 'bg-emerald-500 text-slate-900' : 'bg-slate-700 text-slate-500')}>
+                    {isVerified ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+                  </span>
+                </div>
+              );
+            })}
+            {returnItems.length === 0 && <div className="text-xs text-slate-500">Keine Geräte zugeordnet.</div>}
+          </div>
+          {returnItems.length > 0 && (
+            <div className="mt-2 text-xs">
+              <span className={cn('badge', allVerified ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300' : 'bg-slate-700/50 text-slate-400 border-slate-700')}>
+                {verified.filter(Boolean).length} / {returnItems.length} verifiziert
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="label">Gerätzustand nach Rückgabe</label>
           <div className="grid grid-cols-5 gap-2">
-            {([['excellent', 'Ausgezeichnet', 'text-emerald-300'], ['good', 'Gut', 'text-blue-300'], ['fair', 'Akzeptabel', 'text-amber-300'], ['damaged', 'Beschaedigt', 'text-orange-300'], ['defective', 'Defekt', 'text-red-300']] as const).map(([val, label, color]) => (
+            {conditionOptions.map(([val, label, color]) => (
               <button key={val} onClick={() => setCondition(val)} className={cn('rounded-lg border px-2 py-2 text-xs font-medium transition-colors', condition === val ? 'border-blue-500 bg-blue-600/15 text-blue-300' : 'border-slate-700 text-slate-400 hover:border-slate-600', condition === val && color)}>{label}</button>
             ))}
           </div>
         </div>
-        <div><label className="label">Rueckgabehinweise (optional)</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Probleme bei der Rueckgabe..." /></div>
+
+        <div><label className="label">Rückgabehinweise (optional)</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Probleme bei der Rückgabe ..." /></div>
+
         {(condition === 'damaged' || condition === 'defective') && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-300">
-            <AlertCircle className="inline h-4 w-4 mr-1" /> Geraet wird markiert als {condition === 'defective' ? 'defekt' : 'in Wartung'} und ein Schaedenbericht sollte erstellt werden.
+            <AlertCircle className="inline h-4 w-4 mr-1" /> Gerät wird markiert als {condition === 'defective' ? 'defekt' : 'in Wartung'} und ein Schädenbericht sollte erstellt werden.
           </div>
         )}
+
+        {/* Return signature confirmation */}
+        <div>
+          <label className="label flex items-center gap-1"><PenTool className="h-3.5 w-3.5" /> Rückgabe-Unterschrift (erforderlich)</label>
+          <p className="mb-2 text-xs text-slate-400">Durch Unterschrift bestätigt der Empfänger den ordnungsgemäßen Erhalt der Geräte.</p>
+          <input className="input mb-2" value={signatureName} onChange={(e) => setSignatureName(e.target.value)} placeholder="Name des Empfängers" />
+          <SignaturePad onChange={setSignature} />
+        </div>
       </div>
     </Modal>
   );

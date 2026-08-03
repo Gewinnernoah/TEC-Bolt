@@ -88,12 +88,12 @@ export function AdminSettingsPage() {
       {tab === 'security' && (
         <div className="space-y-4">
           <SettingCard title="Auto-Sperre" icon={Shield}>
-            <SettingInput label="Inaktivitaets-Timeout (Minuten)" type="number" value={autoLogoutMinutes} onChange={setAutoLogoutMinutes} />
+            <SettingInput label="Inaktivitäts-Timeout (Minuten)" type="number" value={autoLogoutMinutes} onChange={setAutoLogoutMinutes} />
             <SettingToggle label="Administratoren von Auto-Sperre befreit" value={autoLogoutAdminExempt} onChange={setAutoLogoutAdminExempt} />
           </SettingCard>
           <SettingCard title="Ausleihsicherheit" icon={Shield}>
             <SettingToggle label="Unterschrift bei Ausleihe erforderlich" value={signatureRequired} onChange={setSignatureRequired} />
-            <SettingToggle label="Lehrer duerfen Geraete selbst zurueckgeben" value={teacherSelfReturn} onChange={setTeacherSelfReturn} />
+            <SettingToggle label="Lehrer duerfen Geräte selbst zurückgeben" value={teacherSelfReturn} onChange={setTeacherSelfReturn} />
           </SettingCard>
         </div>
       )}
@@ -125,7 +125,7 @@ export function AdminSettingsPage() {
               })}
             </div>
           </div>
-          <SettingInput label="Max. Dateigroesse (MB)" type="number" value={maxPrintSize} onChange={setMaxPrintSize} />
+          <SettingInput label="Max. Dateigröße (MB)" type="number" value={maxPrintSize} onChange={setMaxPrintSize} />
         </SettingCard>
       )}
 

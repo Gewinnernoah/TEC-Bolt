@@ -1,58 +1,75 @@
 import { useState, useEffect, useMemo } from 'react';
-import { BookOpen, Search, Plus, Edit, Trash2, Video, Tag, FileText } from 'lucide-react';
-import { supabase } from '@/lib/db';
+import { BookOpen, Search, Plus, Edit, Trash2, Video, Tag, FileText, Printer, ChevronDown, ChevronUp, Play } from 'lucide-react';
+import { supabase } from '@/lib/database';
 import { useAuth } from '@/lib/auth';
+import { cn } from '@/lib/utils';
 import { PageHeader, LoadingScreen, EmptyState } from '@/components/ui';
 import { Modal, ConfirmDialog, useModal } from '@/components/Modal';
 import { useToast } from '@/components/Toast';
-import type { Faq, InventoryCategory } from '@/lib/types';
+
+interface FaqArticle {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+  is_3d_print: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+const CATEGORIES = [
+  { key: 'general', label: 'Allgemein' },
+  { key: 'printing', label: '3D-Druck' },
+  { key: 'lending', label: 'Ausleihe' },
+  { key: 'network', label: 'Netzwerk' },
+  { key: 'inventory', label: 'Inventar' },
+  { key: 'tickets', label: 'Support-Tickets' },
+];
 
 export function FaqPage() {
   const { isStaff } = useAuth();
-  const [faqs, setFaqs] = useState<Faq[]>([]);
-  const [categories, setCategories] = useState<InventoryCategory[]>([]);
+  const [articles, setArticles] = useState<FaqArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Faq | null>(null);
-  const [selected, setSelected] = useState<Faq | null>(null);
+  const [editing, setEditing] = useState<FaqArticle | null>(null);
+  const [selected, setSelected] = useState<FaqArticle | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const deleteModal = useModal();
   const toast = useToast();
 
   const load = async () => {
     setLoading(true);
-    const [faqRes, catRes] = await Promise.all([
-      supabase.from('faqs').select('*').order('sort_order'),
-      supabase.from('inventory_categories').select('*').order('name'),
-    ]);
-    setFaqs((faqRes.data ?? []) as Faq[]);
-    setCategories((catRes.data ?? []) as InventoryCategory[]);
+    const { data } = await supabase.from('faq_articles').select('*').order('sort_order', { ascending: true });
+    setArticles((data ?? []) as FaqArticle[]);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {
-    let result = faqs;
+    let result = articles;
     if (search) {
       const q = search.toLowerCase();
-      result = result.filter((f) => f.title.toLowerCase().includes(q) || f.content.toLowerCase().includes(q) || f.tags.some((t) => t.toLowerCase().includes(q)));
+      result = result.filter((f) => f.question.toLowerCase().includes(q) || f.answer.toLowerCase().includes(q));
     }
-    if (categoryFilter !== 'all') result = result.filter((f) => f.category === categoryFilter);
+    if (categoryFilter !== 'all') {
+      if (categoryFilter === 'printing') {
+        result = result.filter((f) => f.category === 'printing' || f.is_3d_print);
+      } else {
+        result = result.filter((f) => f.category === categoryFilter);
+      }
+    }
     return result;
-  }, [faqs, search, categoryFilter]);
-
-  const categories2 = useMemo(() => {
-    const set = new Set(faqs.map((f) => f.category));
-    return Array.from(set);
-  }, [faqs]);
+  }, [articles, search, categoryFilter]);
 
   const handleDelete = async () => {
     if (!selected) return;
-    const { error } = await supabase.from('faqs').delete().eq('id', selected.id);
+    const { error } = await supabase.from('faq_articles').delete().eq('id', selected.id);
     if (error) { toast(error.message, 'error'); return; }
-    toast('FAQ geloescht', 'success');
+    toast('Artikel gelöscht', 'success');
     setSelected(null);
     deleteModal.closeModal();
     load();
@@ -62,98 +79,88 @@ export function FaqPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="FAQ & Wissensdatenbank" subtitle="Einrichtungsanleitungen, Tutorials und geraetespezifische Hilfe" actions={isStaff ? <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary"><Plus className="h-4 w-4" /> Artikel hinzufuegen</button> : undefined} />
+      <PageHeader title="FAQ & Wissensdatenbank" subtitle="Anleitungen, Tutorials und Antworten auf häufige Fragen" actions={isStaff ? <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary"><Plus className="h-4 w-4" /> Artikel hinzufügen</button> : undefined} />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Artikel, Tutorials, Tags suchen..." className="input pl-10" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Artikel durchsuchen..." className="input pl-10" />
         </div>
         <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="select w-auto">
           <option value="all">Alle Kategorien</option>
-          {categories2.map((c) => <option key={c} value={c}>{c}</option>)}
+          {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
         </select>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card"><EmptyState icon={BookOpen} title="Keine Artikel gefunden" message={isStaff ? 'Ersten Wissensdatenbank-Artikel hinzufuegen' : 'Keine Artikel entsprechen der Suche'} /></div>
+        <div className="card"><EmptyState icon={BookOpen} title="Keine Artikel gefunden" message={isStaff ? 'Ersten FAQ-Artikel hinzufügen' : 'Keine Artikel entsprechen der Suche'} /></div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((faq) => (
-            <div key={faq.id} className="card card-hover p-4">
-              <div className="flex items-start justify-between gap-4">
-                <button onClick={() => setSelected(faq)} className="flex-1 text-left">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                    <span className="text-sm font-medium text-slate-200">{faq.title}</span>
+          {filtered.map((article) => {
+            const isOpen = expanded === article.id;
+            return (
+              <div key={article.id} className="card overflow-hidden">
+                <div className="flex items-start justify-between gap-3">
+                  <button onClick={() => setExpanded(isOpen ? null : article.id)} className="flex-1 p-4 text-left">
+                    <div className="flex items-center gap-2">
+                      {article.is_3d_print ? <Printer className="h-4 w-4 text-cyan-400 flex-shrink-0" /> : <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />}
+                      <span className="text-sm font-medium text-slate-200">{article.question}</span>
+                    </div>
+                    {!isOpen && <p className="mt-1 text-xs text-slate-400 line-clamp-2">{article.answer}</p>}
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <span className="badge bg-slate-800 text-slate-400 border-slate-700 text-[10px]">{CATEGORIES.find((c) => c.key === article.category)?.label ?? article.category}</span>
+                      {article.is_3d_print && <span className="badge bg-cyan-500/15 border-cyan-500/30 text-cyan-300 text-[10px]"><Printer className="h-2.5 w-2.5" /> 3D-Druck</span>}
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-1 p-2 flex-shrink-0">
+                    {isOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                    {isStaff && (
+                      <>
+                        <button onClick={() => { setEditing(article); setShowForm(true); }} className="btn-icon"><Edit className="h-4 w-4" /></button>
+                        <button onClick={() => { setSelected(article); deleteModal.openModal(); }} className="btn-icon text-red-400"><Trash2 className="h-4 w-4" /></button>
+                      </>
+                    )}
                   </div>
-                  <p className="mt-1 text-xs text-slate-400 line-clamp-2">{faq.content}</p>
-                  <div className="mt-2 flex items-center gap-2 flex-wrap">
-                    <span className="badge bg-slate-800 text-slate-400 border-slate-700 text-[10px] capitalize">{faq.category}</span>
-                    {faq.tags.slice(0, 4).map((tag) => <span key={tag} className="badge bg-blue-500/10 border-blue-500/20 text-blue-300 text-[10px]"><Tag className="h-2.5 w-2.5" />{tag}</span>)}
-                    {faq.video_url && <span className="badge bg-red-500/15 border-red-500/30 text-red-300 text-[10px]"><Video className="h-2.5 w-2.5" /> Video</span>}
-                  </div>
-                </button>
-                {isStaff && (
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => { setEditing(faq); setShowForm(true); }} className="btn-icon"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => { setSelected(faq); deleteModal.openModal(); }} className="btn-icon text-red-400"><Trash2 className="h-4 w-4" /></button>
+                </div>
+                {isOpen && (
+                  <div className="border-t border-slate-800 p-4 text-sm text-slate-400 leading-relaxed whitespace-pre-line">
+                    {article.answer}
                   </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {selected && !showForm && (
-        <Modal open onClose={() => setSelected(null)} title={selected.title} size="lg">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="badge bg-slate-800 text-slate-400 border-slate-700 capitalize">{selected.category}</span>
-              {selected.tags.map((tag) => <span key={tag} className="badge bg-blue-500/10 border-blue-500/20 text-blue-300 text-[10px]">{tag}</span>)}
-            </div>
-            <div className="prose prose-invert max-w-none text-sm text-slate-300 whitespace-pre-wrap">{selected.content}</div>
-            {selected.video_url && (
-              <div className="mt-4">
-                <a href={selected.video_url} target="_blank" rel="noreferrer" className="btn-secondary"><Video className="h-4 w-4" /> Video-Tutorial ansehen</a>
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
-
-      {showForm && <FaqFormModal faq={editing} categories={categories} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={() => { setShowForm(false); setEditing(null); load(); }} />}
-
-      <ConfirmDialog open={deleteModal.open} onClose={deleteModal.closeModal} onConfirm={handleDelete} title="FAQ loeschen" message="Sind Sie sicher?" confirmLabel="Loeschen" danger />
+      {showForm && <FaqFormModal article={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={() => { setShowForm(false); setEditing(null); load(); }} />}
+      <ConfirmDialog open={deleteModal.open} onClose={deleteModal.closeModal} onConfirm={handleDelete} title="FAQ löschen" message="Sind Sie sicher?" confirmLabel="Löschen" danger />
     </div>
   );
 }
 
-function FaqFormModal({ faq, categories, onClose, onSaved }: {
-  faq: Faq | null; categories: InventoryCategory[]; onClose: () => void; onSaved: () => void;
+function FaqFormModal({ article, onClose, onSaved }: {
+  article: FaqArticle | null; onClose: () => void; onSaved: () => void;
 }) {
-  const [title, setTitle] = useState(faq?.title ?? '');
-  const [category, setCategory] = useState(faq?.category ?? 'general');
-  const [content, setContent] = useState(faq?.content ?? '');
-  const [tags, setTags] = useState((faq?.tags ?? []).join(', '));
-  const [videoUrl, setVideoUrl] = useState(faq?.video_url ?? '');
-  const [deviceCategoryId, setDeviceCategoryId] = useState(faq?.device_category_id ?? '');
+  const [question, setQuestion] = useState(article?.question ?? '');
+  const [answer, setAnswer] = useState(article?.answer ?? '');
+  const [category, setCategory] = useState(article?.category ?? 'general');
+  const [is3dPrint, setIs3dPrint] = useState(article?.is_3d_print ?? false);
+  const [sortOrder, setSortOrder] = useState(article?.sort_order ?? 0);
   const toast = useToast();
 
   const save = async () => {
-    if (!title || !content) { toast('Titel und Inhalt sind erforderlich', 'error'); return; }
-    const data: Record<string, unknown> = {
-      title, category, content,
-      tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
-      video_url: videoUrl || null,
-      device_category_id: deviceCategoryId || null,
+    if (!question || !answer) { toast('Frage und Antwort sind erforderlich', 'error'); return; }
+    const data = {
+      question, answer, category,
+      is_3d_print: is3dPrint || category === 'printing',
+      sort_order: sortOrder,
     };
-    if (faq) {
-      const { error } = await supabase.from('faqs').update(data).eq('id', faq.id);
+    if (article) {
+      const { error } = await supabase.from('faq_articles').update(data).eq('id', article.id);
       if (error) { toast(error.message, 'error'); return; }
     } else {
-      const { error } = await supabase.from('faqs').insert(data);
+      const { error } = await supabase.from('faq_articles').insert(data);
       if (error) { toast(error.message, 'error'); return; }
     }
     toast('Artikel gespeichert', 'success');
@@ -161,22 +168,31 @@ function FaqFormModal({ faq, categories, onClose, onSaved }: {
   };
 
   return (
-    <Modal open onClose={onClose} title={faq ? 'Artikel bearbeiten' : 'Artikel hinzufuegen'} size="lg"
+    <Modal open onClose={onClose} title={article ? 'Artikel bearbeiten' : 'Artikel hinzufügen'} size="lg"
       footer={<><button className="btn-secondary" onClick={onClose}>Abbrechen</button><button className="btn-primary" onClick={save}>Speichern</button></>}>
       <div className="space-y-4">
-        <div><label className="label">Titel</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-        <div className="grid grid-cols-2 gap-4">
-          <div><label className="label">Kategorie</label><input className="input" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="allgemein, einrichtung, tutorial..." /></div>
-          <div><label className="label">Geraetekategorie (optional)</label>
-            <select className="select" value={deviceCategoryId} onChange={(e) => setDeviceCategoryId(e.target.value)}>
-              <option value="">Keine</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+        <div><label className="label">Frage / Titel *</label><input className="input" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="z.B. Wie richte ich einen Beamer ein?" /></div>
+        <div><label className="label">Kategorie</label>
+          <select className="select" value={category} onChange={(e) => { setCategory(e.target.value); if (e.target.value === 'printing') setIs3dPrint(true); }}>
+            {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
+        </div>
+        <div><label className="label">Antwort / Inhalt *</label><textarea className="input min-h-[200px]" value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Ausführliche Antwort schreiben..." /></div>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" checked={is3dPrint} onChange={(e) => setIs3dPrint(e.target.checked)} className="rounded" />
+            <Printer className="h-4 w-4 text-cyan-400" /> Als 3D-Druck-Artikel markieren
+          </label>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-slate-300">Sortierung:</label>
+            <input type="number" className="input w-20" value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value))} />
           </div>
         </div>
-        <div><label className="label">Inhalt</label><textarea className="input min-h-[200px]" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Artikelinhalt schreiben..." /></div>
-        <div><label className="label">Tags (durch Komma getrennt)</label><input className="input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="einrichtung, beamer, wlan..." /></div>
-        <div><label className="label">Video-URL (optional)</label><input className="input" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/..." /></div>
+        {is3dPrint && (
+          <div className="rounded-lg border border-cyan-500/20 bg-cyan-950/20 px-3 py-2 text-xs text-cyan-300">
+            Dieser Artikel erscheint automatisch sowohl in den 3D-Druck-FAQs als auch in den allgemeinen FAQs.
+          </div>
+        )}
       </div>
     </Modal>
   );

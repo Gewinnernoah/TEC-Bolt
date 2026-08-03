@@ -13,7 +13,7 @@ import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import type { Room, Building, WifiMeasurement } from '@/lib/types';
 
-type Tab = 'overview' | 'heatmap' | 'rooms' | 'measure';
+type Tab = 'overview' | 'heatmap' | 'rooms';
 
 export function MonitoringPage() {
   const { isStaff } = useAuth();
@@ -37,13 +37,12 @@ export function MonitoringPage() {
   const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'overview', label: 'Dashboard', icon: Activity },
     { id: 'heatmap', label: 'Heatmap', icon: Radio },
-    { id: 'rooms', label: 'Raeume', icon: Building2 },
-    { id: 'measure', label: 'Neue Messung', icon: Gauge },
+    { id: 'rooms', label: 'Räume', icon: Building2 },
   ];
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Netzwerk- & Gebaeudeueberwachung" subtitle="Echtzeit-WLAN-Zustand, Raum-Status und Gebaeudeueberblick" actions={isStaff ? <button onClick={() => setShowMeasure(true)} className="btn-primary"><Gauge className="h-4 w-4" /> Messung erfassen</button> : undefined} />
+      <PageHeader title="Netzwerk- & Gebäudeüberwachung" subtitle="Echtzeit-WLAN-Zustand, Raum-Status und Gebäudeüberblick" actions={isStaff ? <button onClick={() => setShowMeasure(true)} className="btn-primary"><Gauge className="h-4 w-4" /> Messung erfassen</button> : undefined} />
 
       <div className="flex gap-1 border-b border-slate-800 overflow-x-auto scrollbar-thin">
         {tabs.map((t) => (
@@ -56,7 +55,6 @@ export function MonitoringPage() {
       {tab === 'overview' && <OverviewTab rooms={rooms ?? []} measurements={measurements ?? []} buildings={buildings} thresholds={{ good: goodThreshold, ok: okThreshold, poor: poorThreshold }} minDownload={minDownload} />}
       {tab === 'heatmap' && <HeatmapTab rooms={rooms ?? []} measurements={measurements ?? []} buildings={buildings} thresholds={{ good: goodThreshold, ok: okThreshold, poor: poorThreshold }} />}
       {tab === 'rooms' && <RoomsTab rooms={rooms ?? []} onSelect={setSelectedRoom} />}
-      {tab === 'measure' && <MeasureTab rooms={rooms ?? []} onSaved={() => {}} />}
 
       {selectedRoom && <RoomDetailModal room={selectedRoom} measurements={measurements ?? []} onClose={() => setSelectedRoom(null)} />}
       {showMeasure && <MeasureTab rooms={rooms ?? []} onSaved={() => setShowMeasure(false)} embedded />}
@@ -94,11 +92,11 @@ function OverviewTab({ rooms, measurements, buildings, thresholds, minDownload }
         <StatCard label="OK" value={stats.ok} total={stats.total} color="amber" icon={Signal} />
         <StatCard label="Schlecht" value={stats.poor} total={stats.total} color="orange" icon={TrendingDown} />
         <StatCard label="Kritisch" value={stats.critical} total={stats.total} color="red" icon={AlertTriangle} />
-        <StatCard label="Ausfaelle" value={stats.outages} total={stats.total} color="red" icon={Zap} />
+        <StatCard label="Ausfälle" value={stats.outages} total={stats.total} color="red" icon={Zap} />
       </div>
 
       <div className="card p-4">
-        <h3 className="mb-3 text-sm font-semibold text-slate-200">Gebaeudeueberblick</h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-200">Gebäudeüberblick</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {buildings.map((b) => {
             const buildingRooms = rooms.filter((r) => r.building_id === b.id);
@@ -115,11 +113,11 @@ function OverviewTab({ rooms, measurements, buildings, thresholds, minDownload }
                     {poorCount > 0 ? `${poorCount} Probleme` : 'Alle in Ordnung'}
                   </span>
                 </div>
-                <div className="mt-2 text-xs text-slate-500">{buildingRooms.length} Raeume · {b.floors} Etagen</div>
+                <div className="mt-2 text-xs text-slate-500">{buildingRooms.length} Räume · {b.floors} Etagen</div>
               </div>
             );
           })}
-          {buildings.length === 0 && <p className="text-sm text-slate-500">Keine Gebaeude registriert</p>}
+          {buildings.length === 0 && <p className="text-sm text-slate-500">Keine Gebäude registriert</p>}
         </div>
       </div>
 
@@ -181,7 +179,7 @@ function HeatmapTab({ rooms, measurements, buildings, thresholds }: {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <select className="select w-auto" value={selectedBuilding} onChange={(e) => setSelectedBuilding(e.target.value)}>
-          <option value="all">Alle Gebaeude</option>
+          <option value="all">Alle Gebäude</option>
           {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       </div>
@@ -212,7 +210,7 @@ function HeatmapTab({ rooms, measurements, buildings, thresholds }: {
               </div>
             );
           })}
-          {filteredRooms.length === 0 && <div className="col-span-full"><EmptyState icon={Radio} title="Keine Raeume" /></div>}
+          {filteredRooms.length === 0 && <div className="col-span-full"><EmptyState icon={Radio} title="Keine Räume" /></div>}
         </div>
       </div>
     </div>
@@ -235,14 +233,14 @@ function RoomsTab({ rooms, onSelect }: {
           </div>
           {room.photos.length > 0 && <img src={room.photos[0]} alt={room.name} className="mt-2 h-32 w-full rounded-lg object-cover border border-slate-700" />}
           <div className="mt-2 space-y-1 text-xs text-slate-400">
-            <div>Kapazitaet: {room.capacity ?? '—'}</div>
+            <div>Kapazität: {room.capacity ?? '—'}</div>
             <div>Typ: {room.room_type}</div>
             {room.installed_technology.length > 0 && <div>Technik: {room.installed_technology.join(', ')}</div>}
             {room.available_connections.length > 0 && <div>Verbindungen: {room.available_connections.join(', ')}</div>}
           </div>
         </button>
       ))}
-      {rooms.length === 0 && <div className="col-span-full"><EmptyState icon={Building2} title="Keine Raeume" /></div>}
+      {rooms.length === 0 && <div className="col-span-full"><EmptyState icon={Building2} title="Keine Räume" /></div>}
     </div>
   );
 }
@@ -263,24 +261,39 @@ function MeasureTab({ rooms, onSaved, embedded }: { rooms: Room[]; onSaved: () =
   const runSpeedtest = async () => {
     setRunning(true);
     try {
-      const start = performance.now();
-      await fetch(`https://supabase.co/`, { cache: 'no-store' }).catch(() => null);
-      const latency = performance.now() - start;
-      setPing(Math.round(latency));
-      setJitter(Math.round(Math.random() * 5 * 100) / 100);
+      // Multi-step latency test for accuracy (5 samples)
+      const latencies: number[] = [];
+      for (let i = 0; i < 5; i++) {
+        const start = performance.now();
+        await fetch(`https://speed.cloudflare.com/__down?bytes=0`, { cache: 'no-store' }).catch(() => null);
+        latencies.push(performance.now() - start);
+      }
+      const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
+      setPing(Math.round(avgLatency));
+      const jitterVal = Math.sqrt(latencies.map((l) => (l - avgLatency) ** 2).reduce((a, b) => a + b, 0) / latencies.length);
+      setJitter(Math.round(jitterVal * 100) / 100);
 
+      // Larger download test (10MB) for meaningful results over ~5+ seconds
       const dlStart = performance.now();
-      const dlResponse = await fetch('https://speed.cloudflare.com/__down?bytes=1000000').catch(() => null);
+      const dlResponse = await fetch('https://speed.cloudflare.com/__down?bytes=10000000').catch(() => null);
       if (dlResponse) await dlResponse.arrayBuffer();
       const dlTime = (performance.now() - dlStart) / 1000;
-      setDownload(dlResponse ? Math.round((1_000_000 * 8) / (dlTime * 1_000_000) * 100) / 100 : 0);
+      setDownload(dlResponse ? Math.round((10_000_000 * 8) / (dlTime * 1_000_000) * 100) / 100 : 0);
 
+      // Larger upload test (1MB) for meaningful results
       const ulStart = performance.now();
-      await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: new Uint8Array(100000) as unknown as BodyInit }).catch(() => null);
+      await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: new Uint8Array(1000000) as unknown as BodyInit }).catch(() => null);
       const ulTime = (performance.now() - ulStart) / 1000;
-      setUpload(ulTime > 0 ? Math.round((100_000 * 8) / (ulTime * 1_000_000) * 100) / 100 : 0);
+      setUpload(ulTime > 0 ? Math.round((1_000_000 * 8) / (ulTime * 1_000_000) * 100) / 100 : 0);
 
-      toast('Geschwindigkeitstest abgeschlossen', 'success');
+      // Auto-flag outage based on thresholds
+      const autoOutage = download < 10 || avgLatency > 200 || signal < -80;
+      setIsOutage(autoOutage);
+      if (autoOutage) {
+        toast('Ausfall erkannt: Werte unter Schwellwerten', 'error');
+      } else {
+        toast('Geschwindigkeitstest abgeschlossen', 'success');
+      }
     } catch {
       toast('Geschwindigkeitstest fehlgeschlagen', 'error');
     }
@@ -288,7 +301,7 @@ function MeasureTab({ rooms, onSaved, embedded }: { rooms: Room[]; onSaved: () =
   };
 
   const save = async () => {
-    if (!roomId) { toast('Bitte Raum auswaehlen', 'error'); return; }
+    if (!roomId) { toast('Bitte Raum auswählen', 'error'); return; }
     const { data: profileData } = await supabase.auth.getUser();
     const { error } = await supabase.from('wifi_measurements').insert({
       room_id: roomId, measured_by: profileData.user?.id,
@@ -305,22 +318,22 @@ function MeasureTab({ rooms, onSaved, embedded }: { rooms: Room[]; onSaved: () =
     <div className="space-y-4">
       <div><label className="label">Raum *</label>
         <select className="select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-          <option value="">Raum auswaehlen...</option>
+          <option value="">Raum auswählen...</option>
           {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.room_number})</option>)}
         </select>
       </div>
       <button onClick={runSpeedtest} disabled={running} className="btn-secondary w-full">
-        {running ? <><Activity className="h-4 w-4 animate-spin" /> Geschwindigkeitstest laeuft...</> : <><Gauge className="h-4 w-4" /> Automatischen Geschwindigkeitstest starten</>}
+        {running ? <><Activity className="h-4 w-4 animate-spin" /> Geschwindigkeitstest läuft...</> : <><Gauge className="h-4 w-4" /> Automatischen Geschwindigkeitstest starten</>}
       </button>
       <div className="grid grid-cols-2 gap-4">
-        <div><label className="label">Signalstaerke (dBm)</label><input type="number" className="input" value={signal} onChange={(e) => setSignal(Number(e.target.value))} /></div>
+        <div><label className="label">Signalstärke (dBm)</label><input type="number" className="input" value={signal} onChange={(e) => setSignal(Number(e.target.value))} /></div>
         <div><label className="label">Download (Mbps)</label><input type="number" className="input" value={download} onChange={(e) => setDownload(Number(e.target.value))} /></div>
         <div><label className="label">Upload (Mbps)</label><input type="number" className="input" value={upload} onChange={(e) => setUpload(Number(e.target.value))} /></div>
         <div><label className="label">Ping (ms)</label><input type="number" className="input" value={ping} onChange={(e) => setPing(Number(e.target.value))} /></div>
         <div><label className="label">Jitter (ms)</label><input type="number" className="input" value={jitter} onChange={(e) => setJitter(Number(e.target.value))} /></div>
         <div><label className="label">Paketverlust (%)</label><input type="number" className="input" value={packetLoss} onChange={(e) => setPacketLoss(Number(e.target.value))} /></div>
       </div>
-      <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={isOutage} onChange={(e) => setIsOutage(e.target.checked)} className="rounded" /> Als Ausfall markieren</label>
+      <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={isOutage} onChange={(e) => setIsOutage(e.target.checked)} className="rounded" /> Als Ausfall/Störung markieren {download > 0 && download < 10 && <span className="text-red-400 text-xs">(auto: unter 10 Mbit/s)</span>}</label>
       <div><label className="label">Notizen</label><textarea className="input min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
       <button onClick={save} className="btn-primary w-full"><Upload className="h-4 w-4" /> Messung speichern</button>
     </div>
@@ -350,13 +363,13 @@ function RoomDetailModal({ room, measurements, onClose }: { room: Room; measurem
           <div className="card p-3"><div className="text-xs text-slate-500">Raumnummer</div><div className="text-sm text-slate-200">{room.room_number}</div></div>
           <div className="card p-3"><div className="text-xs text-slate-500">Etage</div><div className="text-sm text-slate-200">{room.floor}</div></div>
           <div className="card p-3"><div className="text-xs text-slate-500">Typ</div><div className="text-sm text-slate-200">{room.room_type}</div></div>
-          <div className="card p-3"><div className="text-xs text-slate-500">Kapazitaet</div><div className="text-sm text-slate-200">{room.capacity ?? '—'}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500">Kapazität</div><div className="text-sm text-slate-200">{room.capacity ?? '—'}</div></div>
         </div>
         {room.installed_technology.length > 0 && (
           <div className="card p-3"><div className="text-xs text-slate-500 mb-2">Installierte Technik</div><div className="flex flex-wrap gap-1.5">{room.installed_technology.map((tech) => <span key={tech} className="badge bg-blue-500/15 border-blue-500/30 text-blue-300">{tech}</span>)}</div></div>
         )}
         {room.available_connections.length > 0 && (
-          <div className="card p-3"><div className="text-xs text-slate-500 mb-2">Verfuegbare Verbindungen</div><div className="flex flex-wrap gap-1.5">{room.available_connections.map((conn) => <span key={conn} className="badge bg-slate-700/50 text-slate-300 border-slate-700">{conn}</span>)}</div></div>
+          <div className="card p-3"><div className="text-xs text-slate-500 mb-2">Verfügbare Verbindungen</div><div className="flex flex-wrap gap-1.5">{room.available_connections.map((conn) => <span key={conn} className="badge bg-slate-700/50 text-slate-300 border-slate-700">{conn}</span>)}</div></div>
         )}
         {roomMeasurements.length > 0 && (
           <div className="card">

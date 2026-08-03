@@ -29,18 +29,18 @@ export function AdminLogsPage() {
   });
 
   const exportLogs = () => {
-    const csv = ['Zeitstempel,Benutzer,Aktion,Entitaetstyp,Entitaet-ID,Details'];
+    const csv = ['Zeitstempel,Benutzer,Aktion,Entitätstyp,Entität-ID,Details'];
     filtered.forEach((l) => {
       csv.push(`${l.created_at},${l.user?.full_name ?? 'System'},${l.action},${l.entity_type ?? ''},${l.entity_id ?? ''},${JSON.stringify(l.details)}`);
     });
     downloadFile(csv.join('\n'), 'activity-logs.csv', 'text/csv');
   };
 
-  if (loading) return <LoadingScreen message="Aktivitaetsprotokoll wird geladen..." />;
+  if (loading) return <LoadingScreen message="Aktivitätsprotokoll wird geladen..." />;
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Aktivitaetsprotokoll & Audit-Trail" subtitle={`${logs.length} aktuelle Aktionen protokolliert`} actions={
+      <PageHeader title="Aktivitätsprotokoll & Audit-Trail" subtitle={`${logs.length} aktuelle Aktionen protokolliert`} actions={
         <button onClick={exportLogs} className="btn-secondary"><Download className="h-4 w-4" /> CSV exportieren</button>
       } />
 
@@ -64,7 +64,7 @@ export function AdminLogsPage() {
                   <th className="table-header">Zeit</th>
                   <th className="table-header">Benutzer</th>
                   <th className="table-header">Aktion</th>
-                  <th className="table-header">Entitaet</th>
+                  <th className="table-header">Entität</th>
                   <th className="table-header">Details</th>
                 </tr>
               </thead>
