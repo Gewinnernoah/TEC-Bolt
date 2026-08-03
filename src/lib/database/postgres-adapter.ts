@@ -277,11 +277,13 @@ class PgAuth {
       email,
       password,
       full_name: options?.data?.full_name,
-      role: options?.data?.role,
     });
     if (result.error) return { data: { user: null, session: null }, error: result.error };
-    setToken(result.session.access_token);
-    this.notify('SIGNED_IN', result.session);
+    // Account is locked — no session returned. Don't set token.
+    if (result.session?.access_token) {
+      setToken(result.session.access_token);
+      this.notify('SIGNED_IN', result.session);
+    }
     return { data: result, error: null };
   }
 

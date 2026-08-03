@@ -119,7 +119,7 @@ async function getUserFromReq(req) {
 // ---------- Tables that have an updated_at column ----------
 const HAS_UPDATED_AT = new Set([
   'profiles', 'devices', 'consumables', 'printers', 'print_requests',
-  'tickets', 'faqs', 'events', 'repair_records', 'lending_requests',
+  'tickets', 'faq_articles', 'events', 'repair_records', 'lending_requests',
   'lending_loans', 'filament_inventory', 'system_settings',
 ]);
 
@@ -130,8 +130,9 @@ const HAS_CREATED_AT = new Set([
   'lending_requests', 'lending_request_items', 'lending_loans', 'lending_loan_items',
   'system_settings', 'activity_logs', 'consumables', 'filament_catalog', 'filament_inventory',
   'printers', 'print_requests', 'ticket_categories', 'tickets', 'ticket_comments',
-  'wifi_measurements', 'faqs', 'events', 'event_tasks', 'damage_reports', 'repair_records',
-  'inventory_audits', 'inventory_audit_items', 'device_notes', 'notifications',
+  'wifi_measurements', 'faq_articles', 'events', 'event_tasks', 'damage_reports', 'repair_records',
+  'repair_comments', 'inventory_audits', 'inventory_audit_items', 'device_notes', 'notifications',
+  'holidays',
 ]);
 
 // ---------- Schema initialization ----------
@@ -246,7 +247,7 @@ async function handleRequest(req, res, body) {
 
   // ---------- Auth routes ----------
   if (path === '/api/auth/signup' && method === 'POST') {
-    const { email, password, full_name, role } = body;
+    const { email, password, full_name } = body;
     if (!email || !password) return json(res, { error: 'Email and password required' }, 400);
 
     const existing = await pool.query('SELECT id FROM auth_users WHERE email = $1', [email]);
@@ -255,21 +256,19 @@ async function handleRequest(req, res, body) {
     const userId = uuid();
     const hash = hashPassword(password);
     const name = full_name || email.split('@')[0];
-    const userRole = role || 'teacher';
 
+    // New accounts are always locked students — an admin must activate and assign the correct role.
     await pool.query('INSERT INTO auth_users (id, email, password_hash) VALUES ($1, $2, $3)', [userId, email, hash]);
     await pool.query(
-      'INSERT INTO profiles (id, email, full_name, role, is_active, exempt_auto_logout) VALUES ($1, $2, $3, $4, true, $5)',
-      [userId, email, name, userRole, userRole === 'admin']
+      'INSERT INTO profiles (id, email, full_name, role, is_active, must_change_password, exempt_auto_logout) VALUES ($1, $2, $3, $4, false, true, false)',
+      [userId, email, name, 'student']
     );
 
-    const tok = token();
-    const expires = new Date(Date.now() + 30 * 24 * 3600 * 1000);
-    await pool.query('INSERT INTO auth_sessions (id, token, user_id, email, expires_at) VALUES ($1, $2, $3, $4, $5)', [uuid(), tok, userId, email, expires]);
-
+    // Do NOT auto-login — account is locked. Return info message.
     return json(res, {
       user: { id: userId, email },
-      session: { access_token: tok, user: { id: userId, email }, expires_at: Math.floor(expires.getTime() / 1000) },
+      session: null,
+      message: 'Konto erstellt — ein Administrator muss es freischalten und die Rolle zuweisen.',
     });
   }
 

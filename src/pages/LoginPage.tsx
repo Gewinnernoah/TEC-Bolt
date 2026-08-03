@@ -64,7 +64,7 @@ export function LoginPage({ locked = false, mustChangePassword = false }: { lock
     if (err) {
       setError(err);
     } else {
-      setSuccess('Konto erfolgreich erstellt. Sie können sich jetzt anmelden.');
+      setSuccess('Konto erstellt. Ein Administrator muss es freischalten und die Rolle zuweisen, bevor Sie sich anmelden können.')
       setMode('login');
       setPassword('');
     }
@@ -387,7 +387,7 @@ export function LoginPage({ locked = false, mustChangePassword = false }: { lock
                 </div>
               </div>
               <div className="rounded-lg border border-blue-500/20 bg-blue-950/20 px-3 py-2.5 text-xs text-blue-300">
-                Neue Konten werden als «Lehrer» angelegt. Die Rolle kann später von einem Administrator geändert werden.
+                Neue Konten werden als gesperrte Schüler-Konten angelegt und müssen von einem Administrator freigeschaltet werden.
               </div>
               <button type="submit" disabled={loading} className="btn-primary w-full">
                 <UserPlus className="h-4 w-4" />
@@ -417,8 +417,6 @@ export function LoginPage({ locked = false, mustChangePassword = false }: { lock
           <button onClick={() => navigateTo('faq-public')} className="text-slate-500 hover:text-blue-400 transition-colors">FAQ</button>
           <span className="text-slate-700">·</span>
           <button onClick={() => navigateTo('impressum')} className="text-slate-500 hover:text-blue-400 transition-colors">Impressum</button>
-          <span className="text-slate-700">·</span>
-          <button onClick={() => navigateTo('dokumentation')} className="text-slate-500 hover:text-blue-400 transition-colors">Dokumentation</button>
         </div>
       </div>
     </div>

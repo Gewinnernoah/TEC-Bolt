@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Inactive user lock — block login even for existing sessions.
             if (p && p.is_active === false) {
               await signOut();
-              setAuthError('Ihr Konto wurde deaktiviert.');
+              setAuthError('Ihr Konto wurde noch nicht freigeschaltet. Ein Administrator muss es aktivieren.');
               setLoading(false);
               return;
             }
@@ -195,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const p = await loadProfile(data.user.id);
       if (p && p.is_active === false) {
         await signOut();
-        return { error: 'Ihr Konto wurde deaktiviert.' };
+        return { error: 'Ihr Konto wurde noch nicht freigeschaltet. Ein Administrator muss es aktivieren und die Rolle zuweisen.' };
       }
       setMustChangePassword(Boolean(p?.must_change_password));
     }
@@ -205,16 +205,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadProfile, signOut]);
 
   const signUp = useCallback(async (email: string, password: string, fullName: string) => {
-    // Role is NOT user-selectable. New accounts always default to 'teacher'.
-    const role: UserRole = 'teacher';
+    // New accounts are always locked students — an admin must activate and assign the correct role.
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role } },
+      options: { data: { full_name: fullName } },
     });
     if (error) return { error: translateAuthError(error.message) };
     if (data.user) {
-      await logActivity('auth.signup', 'user', data.user.id, { email, role });
+      await logActivity('auth.signup', 'user', data.user.id, { email, role: 'student' });
     }
     return { error: null };
   }, []);

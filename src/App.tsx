@@ -22,7 +22,8 @@ import { AdminLogsPage } from '@/pages/AdminLogsPage';
 import { TecRoomPage } from '@/pages/TecRoomPage';
 import { ImpressumPage } from '@/pages/ImpressumPage';
 import { PublicFaqPage } from '@/pages/PublicFaqPage';
-import { DocumentationPage } from '@/pages/DocumentationPage';
+import { ImpressumPage } from '@/pages/ImpressumPage';
+import { PublicFaqPage } from '@/pages/PublicFaqPage';
 import { getRoute, onRouteChange, navigateTo, type Route } from '@/lib/router';
 
 function AppContent() {
@@ -61,10 +62,6 @@ function AppContent() {
 
   if (route === 'impressum') {
     return <ImpressumPage onBack={() => navigateTo('login')} />;
-  }
-
-  if (route === 'dokumentation') {
-    return <DocumentationPage onBack={() => navigateTo('login')} />;
   }
 
   // Login-Seite

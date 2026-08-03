@@ -8,8 +8,7 @@ export type Route =
   | 'login'
   | 'tec-display'
   | 'faq-public'
-  | 'impressum'
-  | 'dokumentation';
+  | 'impressum';
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
 
@@ -31,7 +30,6 @@ export function getRoute(): Route {
   if (path === 'tec-anzeige') return 'tec-display';
   if (path === 'faq-public') return 'faq-public';
   if (path === 'impressum') return 'impressum';
-  if (path === 'dokumentation') return 'dokumentation';
   // Root (/) leitet auf Login um
   if (path === '') return 'login';
   // Unbekannte Route -> Login
@@ -46,7 +44,6 @@ export function navigateTo(route: Route): void {
     'tec-display': '/TEC-Anzeige',
     'faq-public': '/faq-public',
     impressum: '/impressum',
-    dokumentation: '/dokumentation',
   };
   const target = `${BASE}${routePath[route]}`;
   if (window.location.pathname !== target) {

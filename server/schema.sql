@@ -31,18 +31,36 @@ CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY REFERENCES auth_users(id) ON DELETE CASCADE,
   email text NOT NULL,
   full_name text NOT NULL,
-  role text NOT NULL DEFAULT 'teacher',
+  role text NOT NULL DEFAULT 'student',
   department text,
   phone text,
   avatar_url text,
   fingerprint_enrolled boolean NOT NULL DEFAULT false,
   fingerprint_credential_id text,
   webauthn_credentials jsonb NOT NULL DEFAULT '[]'::jsonb,
-  is_active boolean NOT NULL DEFAULT true,
+  is_active boolean NOT NULL DEFAULT false,
   exempt_auto_logout boolean NOT NULL DEFAULT false,
+  must_change_password boolean NOT NULL DEFAULT false,
+  permissions jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Add columns if table already exists (idempotent)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='must_change_password') THEN
+    ALTER TABLE profiles ADD COLUMN must_change_password boolean NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='permissions') THEN
+    ALTER TABLE profiles ADD COLUMN permissions jsonb;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='avatar_url') THEN
+    ALTER TABLE profiles ADD COLUMN avatar_url text;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='phone') THEN
+    ALTER TABLE profiles ADD COLUMN phone text;
+  END IF;
+END $$;
 
 -- ============================================================
 -- inventory_categories
@@ -90,7 +108,7 @@ CREATE TABLE IF NOT EXISTS rooms (
 );
 
 -- ============================================================
--- cabinets
+-- cabinets / shelves
 -- ============================================================
 CREATE TABLE IF NOT EXISTS cabinets (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -103,9 +121,6 @@ CREATE TABLE IF NOT EXISTS cabinets (
   UNIQUE (room_id, code)
 );
 
--- ============================================================
--- shelves
--- ============================================================
 CREATE TABLE IF NOT EXISTS shelves (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   cabinet_id uuid REFERENCES cabinets(id) ON DELETE CASCADE,
@@ -142,12 +157,19 @@ CREATE TABLE IF NOT EXISTS devices (
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   notes text,
   is_high_value boolean NOT NULL DEFAULT false,
+  operating_system text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_devices_status ON devices(status);
 CREATE INDEX IF NOT EXISTS idx_devices_category ON devices(category_id);
 CREATE INDEX IF NOT EXISTS idx_devices_room ON devices(room_id);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='devices' AND column_name='operating_system') THEN
+    ALTER TABLE devices ADD COLUMN operating_system text;
+  END IF;
+END $$;
 
 -- ============================================================
 -- device_bundles / device_bundle_items
@@ -246,6 +268,8 @@ CREATE TABLE IF NOT EXISTS lending_loans (
   return_condition text,
   return_notes text,
   return_staff_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
+  return_signature_data text,
+  return_signature_name text,
   notes text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -253,10 +277,31 @@ CREATE TABLE IF NOT EXISTS lending_loans (
 CREATE INDEX IF NOT EXISTS idx_loans_status ON lending_loans(status);
 CREATE INDEX IF NOT EXISTS idx_loans_teacher ON lending_loans(teacher_id);
 
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='lending_loans' AND column_name='return_signature_data') THEN
+    ALTER TABLE lending_loans ADD COLUMN return_signature_data text;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='lending_loans' AND column_name='return_signature_name') THEN
+    ALTER TABLE lending_loans ADD COLUMN return_signature_name text;
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS lending_loan_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   loan_id uuid NOT NULL REFERENCES lending_loans(id) ON DELETE CASCADE,
   device_id uuid NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- ============================================================
+-- holidays (vacation/vacation blocking for calendar)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS holidays (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  start_date date NOT NULL,
+  end_date date NOT NULL,
+  type text NOT NULL DEFAULT 'holiday',
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -294,12 +339,19 @@ CREATE TABLE IF NOT EXISTS consumables (
   unit text NOT NULL DEFAULT 'pcs',
   current_stock numeric(10,2) NOT NULL DEFAULT 0,
   min_stock numeric(10,2) NOT NULL DEFAULT 0,
+  max_stock numeric(10,2) NOT NULL DEFAULT 0,
   reorder_qty numeric(10,2) NOT NULL DEFAULT 0,
   reorder_link text,
   notes text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='consumables' AND column_name='max_stock') THEN
+    ALTER TABLE consumables ADD COLUMN max_stock numeric(10,2) NOT NULL DEFAULT 0;
+  END IF;
+END $$;
 
 -- ============================================================
 -- filament_catalog / filament_inventory
@@ -367,11 +419,22 @@ CREATE TABLE IF NOT EXISTS print_requests (
   started_at timestamptz,
   completed_at timestamptz,
   failed_reason text,
+  bambu_job_id text,
+  bambu_printer_id text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_print_requests_status ON print_requests(status);
 CREATE INDEX IF NOT EXISTS idx_print_requests_teacher ON print_requests(teacher_id);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='print_requests' AND column_name='bambu_job_id') THEN
+    ALTER TABLE print_requests ADD COLUMN bambu_job_id text;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='print_requests' AND column_name='bambu_printer_id') THEN
+    ALTER TABLE print_requests ADD COLUMN bambu_printer_id text;
+  END IF;
+END $$;
 
 -- ============================================================
 -- ticket_categories / tickets / ticket_comments
@@ -446,17 +509,14 @@ CREATE INDEX IF NOT EXISTS idx_wifi_room ON wifi_measurements(room_id);
 CREATE INDEX IF NOT EXISTS idx_wifi_created ON wifi_measurements(created_at DESC);
 
 -- ============================================================
--- faqs
+-- faq_articles (merged general + 3D-print FAQs)
 -- ============================================================
-CREATE TABLE IF NOT EXISTS faqs (
+CREATE TABLE IF NOT EXISTS faq_articles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  title text NOT NULL,
+  question text NOT NULL,
+  answer text NOT NULL,
   category text NOT NULL DEFAULT 'general',
-  content text NOT NULL,
-  device_category_id uuid REFERENCES inventory_categories(id) ON DELETE SET NULL,
-  device_id uuid REFERENCES devices(id) ON DELETE SET NULL,
-  tags text[] NOT NULL DEFAULT '{}',
-  video_url text,
+  is_3d_print boolean NOT NULL DEFAULT false,
   sort_order int NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -499,7 +559,7 @@ CREATE TABLE IF NOT EXISTS event_tasks (
 );
 
 -- ============================================================
--- damage_reports / repair_records
+-- damage_reports / repair_records / repair_comments
 -- ============================================================
 CREATE TABLE IF NOT EXISTS damage_reports (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -526,10 +586,26 @@ CREATE TABLE IF NOT EXISTS repair_records (
   resolution text,
   cost numeric(10,2) NOT NULL DEFAULT 0,
   is_recurring boolean NOT NULL DEFAULT false,
+  maintenance_started_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_repair_device ON repair_records(device_id);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='repair_records' AND column_name='maintenance_started_at') THEN
+    ALTER TABLE repair_records ADD COLUMN maintenance_started_at timestamptz;
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS repair_comments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  repair_id uuid NOT NULL REFERENCES repair_records(id) ON DELETE CASCADE,
+  author_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  comment text NOT NULL,
+  is_internal boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
 -- ============================================================
 -- inventory_audits / inventory_audit_items
@@ -607,25 +683,25 @@ $$ LANGUAGE plpgsql;
 -- Seed data
 -- ============================================================
 INSERT INTO ticket_categories (key, name, description, icon, color, requires_room, requires_speedtest, is_enabled, sort_order) VALUES
-  ('technical_problem', 'Technical Problem', 'A device or system is not working correctly', 'Wrench', '#ef4444', true, false, true, 1),
-  ('technical_question', 'Technical Question', 'Ask for help or guidance with technology', 'CircleHelp', '#3b82f6', false, false, true, 2),
-  ('wifi_issue', 'Wi-Fi Issue', 'Network connectivity or speed problems', 'Wifi', '#f59e0b', true, true, true, 3),
-  ('room_building', 'Room / Building Issue', 'Problems with a room or building infrastructure', 'Building2', '#8b5cf6', true, false, true, 4),
-  ('auditorium_event', 'Auditorium / Event Request', 'Request technical support for an event or auditorium', 'Mic2', '#10b981', true, false, true, 5)
+  ('technical_problem', 'Technisches Problem', 'Ein Gerät oder System funktioniert nicht richtig', 'Wrench', '#ef4444', true, false, true, 1),
+  ('technical_question', 'Technische Frage', 'Hilfe oder Beratung bei Technik', 'CircleHelp', '#3b82f6', false, false, true, 2),
+  ('wifi_issue', 'WLAN-Problem', 'Netzwerkverbindung oder Geschwindigkeit', 'Wifi', '#f59e0b', true, true, true, 3),
+  ('room_building', 'Raum / Gebäude', 'Probleme mit Raum oder Gebäudeinfrastruktur', 'Building2', '#8b5cf6', true, false, true, 4),
+  ('auditorium_event', 'Auditorium / Event', 'Technische Unterstützung für Event oder Auditorium', 'Mic2', '#10b981', true, false, true, 5)
 ON CONFLICT (key) DO NOTHING;
 
 INSERT INTO lending_periods (name, duration_minutes, is_custom, sort_order) VALUES
-  ('Single Lesson', 45, false, 1),
-  ('Double Lesson', 90, false, 2),
-  ('Half Day', 240, false, 3),
-  ('Full Day', 480, false, 4)
+  ('Einzelstunde', 45, false, 1),
+  ('Doppelstunde', 90, false, 2),
+  ('Halber Tag', 240, false, 3),
+  ('Ganzer Tag', 480, false, 4)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO break_periods (name, start_time, end_time, day_of_week, is_active) VALUES
-  ('Morning Break', '09:25', '09:40', 0, true),
-  ('Big Break', '10:55', '11:15', 0, true),
-  ('Lunch Break', '12:30', '13:15', 0, true),
-  ('Afternoon Break', '14:35', '14:50', 0, true)
+  ('Morgenpause', '09:25', '09:40', 0, true),
+  ('Große Pause', '10:55', '11:15', 0, true),
+  ('Mittagspause', '12:30', '13:15', 0, true),
+  ('Nachmittagspause', '14:35', '14:50', 0, true)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO system_settings (key, value, description) VALUES
@@ -649,31 +725,43 @@ INSERT INTO system_settings (key, value, description) VALUES
 ON CONFLICT (key) DO NOTHING;
 
 INSERT INTO filament_catalog (material, color, color_hex, is_available, sort_order) VALUES
-  ('PLA', 'White', '#f8fafc', true, 1),
-  ('PLA', 'Black', '#0f172a', true, 2),
-  ('PLA', 'Red', '#ef4444', true, 3),
-  ('PLA', 'Blue', '#3b82f6', true, 4),
-  ('PLA', 'Green', '#22c55e', true, 5),
-  ('PLA', 'Yellow', '#eab308', true, 6),
+  ('PLA', 'Weiß', '#f8fafc', true, 1),
+  ('PLA', 'Schwarz', '#0f172a', true, 2),
+  ('PLA', 'Rot', '#ef4444', true, 3),
+  ('PLA', 'Blau', '#3b82f6', true, 4),
+  ('PLA', 'Grün', '#22c55e', true, 5),
+  ('PLA', 'Gelb', '#eab308', true, 6),
   ('PLA', 'Orange', '#f97316', true, 7),
-  ('PLA', 'Grey', '#94a3b8', true, 8),
-  ('PETG', 'Black', '#1e293b', true, 9),
-  ('PETG', 'Clear', '#e2e8f0', true, 10),
-  ('ABS', 'White', '#f1f5e9', true, 11),
-  ('ABS', 'Black', '#0f172a', true, 12)
+  ('PLA', 'Grau', '#94a3b8', true, 8),
+  ('PETG', 'Schwarz', '#1e293b', true, 9),
+  ('PETG', 'Transparent', '#e2e8f0', true, 10),
+  ('ABS', 'Weiß', '#f1f5e9', true, 11),
+  ('ABS', 'Schwarz', '#0f172a', true, 12)
 ON CONFLICT (material, color) DO NOTHING;
 
 INSERT INTO inventory_categories (name, description, icon, color, sort_order) VALUES
-  ('Projectors', 'Beamers and projection equipment', 'Projector', '#6366f1', 1),
-  ('Adapters', 'Video and power adapters', 'Cable', '#06b6d4', 2),
-  ('Laptops', 'Portable computers', 'Laptop', '#0ea5e9', 3),
-  ('Cameras', 'Photo and video cameras', 'Camera', '#f59e0b', 4),
-  ('Audio', 'Speakers, microphones and audio gear', 'Speaker', '#ec4899', 5),
-  ('3D Printers', '3D printing equipment', 'Printer3d', '#22c55e', 6),
-  ('Tablets', 'Tablets and mobile devices', 'Tablet', '#8b5cf6', 7),
-  ('Cables', 'Extension and connection cables', 'Cable', '#64748b', 8),
-  ('Presentation Kits', 'Bundled presentation equipment', 'Presentation', '#14b8a6', 9),
-  ('Measurement', 'Measurement and testing devices', 'Ruler', '#f97316', 10),
-  ('Networking', 'Network equipment and routers', 'Router', '#3b82f6', 11),
-  ('Other', 'Miscellaneous equipment', 'Package', '#94a3b8', 99)
+  ('Beamer', 'Projektoren und Projektionsgeräte', 'Projector', '#6366f1', 1),
+  ('Adapter', 'Video- und Netzadapter', 'Cable', '#06b6d4', 2),
+  ('Laptops', 'Tragbare Computer', 'Laptop', '#0ea5e9', 3),
+  ('Kameras', 'Foto- und Videokameras', 'Camera', '#f59e0b', 4),
+  ('Audio', 'Lautsprecher, Mikrofone und Audio-Geräte', 'Speaker', '#ec4899', 5),
+  ('3D-Drucker', '3D-Druck-Ausrüstung', 'Printer3d', '#22c55e', 6),
+  ('Tablets', 'Tablets und mobile Geräte', 'Tablet', '#8b5cf6', 7),
+  ('Kabel', 'Verlängerungs- und Verbindungskabel', 'Cable', '#64748b', 8),
+  ('Präsentationskits', 'Gebündelte Präsentationsausrüstung', 'Presentation', '#14b8a6', 9),
+  ('Messgeräte', 'Mess- und Prüfgeräte', 'Ruler', '#f97316', 10),
+  ('Netzwerk', 'Netzwerkausrüstung und Router', 'Router', '#3b82f6', 11),
+  ('Sonstiges', 'Verschiedene Geräte', 'Package', '#94a3b8', 99)
 ON CONFLICT (name) DO NOTHING;
+
+-- Seed a few FAQ articles
+INSERT INTO faq_articles (question, answer, category, is_3d_print, sort_order) VALUES
+  ('Wie richte ich einen Beamer ein?', 'Beamer an die Stromversorgung anschließen, dann das HDMI/DisplayPort-Kabel mit dem Laptop verbinden. Die korrekte Quelle am Beamer auswählen (HDMI1/HDMI2). Falls kein Bild erscheint, die Windows-Taste + P drücken und "Duplizieren" wählen.', 'general', false, 1),
+  ('Wie funktioniert der 3D-Druck?', 'Laden Sie Ihre STL- oder 3MF-Datei im 3D-Druck-Bereich hoch, wählen Sie das gewünschte Filament und die Menge. Ein Teammitglied prüft den Auftrag und startet den Druck. Die fertigen Drucke können im TEC-Raum abgeholt werden.', 'printing', true, 1),
+  ('Wie leihe ich Geräte aus?', 'Gehen Sie zum Ausleih-Bereich, wählen Sie die gewünschten Geräte und den Zeitraum. Die Ausleihe muss von einem Teammitglied freigegeben werden. Bei Abholung ist eine Unterschrift erforderlich.', 'lending', false, 1)
+ON CONFLICT DO NOTHING;
+
+-- Seed filament inventory
+INSERT INTO filament_inventory (catalog_id, remaining_grams, total_grams, spool_count, min_grams)
+SELECT id, 1000, 1000, 2, 200 FROM filament_catalog
+WHERE NOT EXISTS (SELECT 1 FROM filament_inventory fi WHERE fi.catalog_id = filament_catalog.id);
