@@ -22,8 +22,6 @@ import { AdminLogsPage } from '@/pages/AdminLogsPage';
 import { TecRoomPage } from '@/pages/TecRoomPage';
 import { ImpressumPage } from '@/pages/ImpressumPage';
 import { PublicFaqPage } from '@/pages/PublicFaqPage';
-import { ImpressumPage } from '@/pages/ImpressumPage';
-import { PublicFaqPage } from '@/pages/PublicFaqPage';
 import { getRoute, onRouteChange, navigateTo, type Route } from '@/lib/router';
 
 function AppContent() {
