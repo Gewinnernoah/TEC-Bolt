@@ -294,6 +294,12 @@ class PgAuth {
     return { error: null };
   }
 
+  async updateUser({ password }: { password: string }): Promise<DbResult> {
+    const result = await apiPost('/api/auth/update', { password });
+    if (result.error) return { data: { user: null }, error: result.error };
+    return { data: { user: result.user }, error: null };
+  }
+
   async resetPasswordForEmail(_email: string): Promise<DbResult> {
     return { data: {}, error: null };
   }

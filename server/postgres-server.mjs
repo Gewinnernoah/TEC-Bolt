@@ -301,6 +301,16 @@ async function handleRequest(req, res, body) {
     return json(res, {});
   }
 
+  if (path === '/api/auth/update' && method === 'POST') {
+    const user = await getUserFromReq(req);
+    if (!user) return json(res, { error: 'Unauthorized' }, 401);
+    const { password } = body;
+    if (!password || password.length < 6) return json(res, { error: 'Password must be at least 6 characters' }, 400);
+    const hash = hashPassword(password);
+    await pool.query('UPDATE auth_users SET password_hash = $1 WHERE id = $2', [hash, user.id]);
+    return json(res, { user });
+  }
+
   if (path === '/api/auth/session' && method === 'GET') {
     const user = await getUserFromReq(req);
     if (!user) return json(res, { session: null });
